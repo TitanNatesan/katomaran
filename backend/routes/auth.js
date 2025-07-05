@@ -1,7 +1,7 @@
 const express = require('express');
 const passport = require('passport');
 const router = express.Router();
-const { register, login, googleAuth, getMe } = require('../controllers/authController');
+const { register, login, googleAuth, githubAuth, getMe } = require('../controllers/authController');
 const { registerValidation, loginValidation } = require('../validators/authValidator');
 const authMiddleware = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimiter');
@@ -25,6 +25,11 @@ router.post('/login', loginValidation, login);
 // @desc    Google OAuth login
 // @access  Public
 router.post('/google', googleAuth);
+
+// @route   POST /api/auth/github
+// @desc    GitHub OAuth login
+// @access  Public
+router.post('/github', githubAuth);
 
 // @route   GET /api/auth/github
 // @desc    GitHub OAuth login

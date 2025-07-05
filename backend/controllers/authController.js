@@ -2,6 +2,7 @@ const { validationResult } = require('express-validator');
 const User = require('../models/User');
 const { generateToken } = require('../utils/jwt');
 const { OAuth2Client } = require('google-auth-library');
+const axios = require('axios');
 const logger = require('../config/logger');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -110,6 +111,8 @@ const googleAuth = async (req, res, next) => {
     try {
         const { idToken } = req.body;
 
+        console.log('Google Auth Request:', req.body);
+
         if (!idToken) {
             return res.status(400).json({ message: 'Google ID token is required' });
         }
@@ -164,6 +167,107 @@ const googleAuth = async (req, res, next) => {
     }
 };
 
+// @desc    GitHub OAuth login
+// @route   POST /api/auth/github
+// @access  Public
+const githubAuth = async (req, res, next) => {
+    try {
+        const { accessToken, user: githubUser } = req.body;
+
+        if (!accessToken || !githubUser) {
+            return res.status(400).json({
+                success: false,
+                message: 'Access token and user data are required'
+            });
+        }
+
+        // Verify the GitHub access token by fetching user data from GitHub API
+        let githubUserData;
+        try {
+            const response = await axios.get('https://api.github.com/user', {
+                headers: {
+                    Authorization: `token ${accessToken}`,
+                    'User-Agent': 'Katomaran-App'
+                }
+            });
+            githubUserData = response.data;
+
+            // Get user email if not public
+            if (!githubUserData.email) {
+                const emailResponse = await axios.get('https://api.github.com/user/emails', {
+                    headers: {
+                        Authorization: `token ${accessToken}`,
+                        'User-Agent': 'Katomaran-App'
+                    }
+                });
+                const primaryEmail = emailResponse.data.find(email => email.primary);
+                githubUserData.email = primaryEmail ? primaryEmail.email : null;
+            }
+        } catch (error) {
+            logger.error(`GitHub API verification failed: ${error.message}`);
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid GitHub access token'
+            });
+        }
+
+        // Use verified email from GitHub or fallback to provided email
+        const email = githubUserData.email || githubUser.email;
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email address is required but not available from GitHub'
+            });
+        }
+
+        // Check if user exists
+        let user = await User.findOne({
+            $or: [
+                { email: email },
+                { githubId: githubUserData.id.toString() }
+            ]
+        });
+
+        if (user) {
+            // Update existing user with GitHub info if not already set
+            if (!user.githubId) {
+                user.githubId = githubUserData.id.toString();
+                user.avatar = user.avatar || githubUserData.avatar_url;
+                user.name = user.name || githubUserData.name || githubUserData.login;
+                await user.save();
+            }
+        } else {
+            // Create new user
+            user = new User({
+                email: email,
+                githubId: githubUserData.id.toString(),
+                name: githubUserData.name || githubUserData.login || email.split('@')[0],
+                avatar: githubUserData.avatar_url
+            });
+            await user.save();
+        }
+
+        // Generate token
+        const token = generateToken(user._id);
+
+        logger.info(`GitHub OAuth successful for user: ${email}`);
+
+        res.json({
+            success: true,
+            token,
+            user: {
+                id: user._id,
+                email: user.email,
+                name: user.name,
+                avatar: user.avatar
+            }
+        });
+    } catch (error) {
+        logger.error(`GitHub OAuth error: ${error.message}`);
+        next(error);
+    }
+};
+
 // @desc    Get current user
 // @route   GET /api/auth/me
 // @access  Private
@@ -183,5 +287,6 @@ module.exports = {
     register,
     login,
     googleAuth,
+    githubAuth,
     getMe
 };
