@@ -61,7 +61,7 @@ const testEndpoint = async (url, method = 'GET', data = null, headers = {}) => {
 const runTests = async () => {
     log('\n🔍 KATOMARAN API CONNECTION VALIDATION', colors.bold + colors.cyan);
     log('═'.repeat(50), colors.cyan);
-    
+
     // Test 1: Backend Health Check
     log('\n📡 Backend Health Check:', colors.yellow);
     const healthCheck = await testEndpoint(`${BACKEND_URL}/api/health`);
@@ -76,13 +76,13 @@ const runTests = async () => {
 
     // Test 2: Authentication Endpoints
     log('\n🔐 Authentication Endpoints:', colors.yellow);
-    
+
     // Test register endpoint validation
     const registerTest = await testEndpoint(`${BACKEND_URL}/api/auth/register`, 'POST', {
         email: 'invalid-email',
         password: '123'
     });
-    
+
     if (registerTest.status === 400) {
         log('✅ Register validation working', colors.green);
     } else {
@@ -94,7 +94,7 @@ const runTests = async () => {
         email: 'invalid@test.com',
         password: 'wrongpassword'
     });
-    
+
     if (loginTest.status === 401 || loginTest.status === 400) {
         log('✅ Login validation working', colors.green);
     } else {
@@ -106,7 +106,7 @@ const runTests = async () => {
     const googleOAuthTest = await testEndpoint(`${BACKEND_URL}/api/auth/google`, 'POST', {
         token: 'invalid-token'
     });
-    
+
     if (googleOAuthTest.status === 400) {
         log('✅ Google OAuth endpoint configured', colors.green);
     } else {
@@ -118,7 +118,7 @@ const runTests = async () => {
         accessToken: 'invalid-token',
         user: { email: 'test@test.com' }
     });
-    
+
     if (githubOAuthTest.status === 400 || githubOAuthTest.status === 401) {
         log('✅ GitHub OAuth endpoint configured', colors.green);
     } else {
@@ -128,7 +128,7 @@ const runTests = async () => {
     // Test 4: Protected Routes
     log('\n🛡️ Protected Routes:', colors.yellow);
     const tasksWithoutAuth = await testEndpoint(`${BACKEND_URL}/api/tasks`);
-    
+
     if (tasksWithoutAuth.status === 401) {
         log('✅ Task routes properly protected', colors.green);
     } else {
@@ -158,7 +158,7 @@ const runTests = async () => {
 
     // Test 7: Environment Variables
     log('\n🔧 Environment Configuration:', colors.yellow);
-    
+
     const requiredEnvVars = [
         'GOOGLE_CLIENT_ID',
         'GOOGLE_CLIENT_SECRET',
@@ -195,10 +195,10 @@ const runTests = async () => {
                 password: 'wrong'
             }));
         }
-        
+
         const results = await Promise.all(promises);
         const rateLimited = results.some(r => r.status === 429);
-        
+
         if (rateLimited) {
             log('✅ Rate limiting is working', colors.green);
         } else {
@@ -217,14 +217,14 @@ const runTests = async () => {
     log('✅ Protected routes are secured', colors.green);
     log('✅ CORS is properly configured', colors.green);
     log('✅ Rate limiting is active', colors.green);
-    
+
     log('\n🚀 Next Steps:', colors.bold + colors.yellow);
     log('1. Test OAuth login flows manually', colors.cyan);
     log('2. Create test tasks after authentication', colors.cyan);
     log('3. Verify real-time updates with multiple clients', colors.cyan);
     log('4. Test PWA features and offline functionality', colors.cyan);
     log('5. Deploy to production and test live URLs', colors.cyan);
-    
+
     log('\n🎯 The application is production-ready!', colors.bold + colors.green);
     log('All core APIs are properly connected and functional.\n', colors.green);
 };

@@ -8,7 +8,7 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:500
 const FRONTEND_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000';
 
 console.log('🔍 KATOMARAN API VALIDATION TEST'.bold.cyan);
-console.log('=' .repeat(50).gray);
+console.log('='.repeat(50).gray);
 console.log(`Backend URL: ${BACKEND_URL}`.yellow);
 console.log(`Frontend URL: ${FRONTEND_URL}`.yellow);
 console.log('');
@@ -41,11 +41,11 @@ class APIValidator {
         const response = await axios.get(`${BACKEND_URL}/api/health`, {
             timeout: 5000
         });
-        
+
         if (response.status !== 200) {
             throw new Error(`Expected status 200, got ${response.status}`);
         }
-        
+
         if (!response.data.success) {
             throw new Error('Health check failed');
         }
@@ -130,7 +130,7 @@ class APIValidator {
     async testRateLimiting() {
         // Test that rate limiting is configured (we expect it to work, not to be triggered)
         const response = await axios.get(`${BACKEND_URL}/api/health`);
-        
+
         if (!response.headers['x-ratelimit-limit'] && !response.headers['ratelimit-limit']) {
             console.log('⚠️  Warning: Rate limiting headers not found'.yellow);
         }
@@ -152,7 +152,7 @@ class APIValidator {
 
     printSummary() {
         console.log('📊 TEST SUMMARY'.bold.cyan);
-        console.log('=' .repeat(30).gray);
+        console.log('='.repeat(30).gray);
         console.log(`Total Tests: ${this.results.passed + this.results.failed}`);
         console.log(`Passed: ${this.results.passed}`.green);
         console.log(`Failed: ${this.results.failed}`.red);
@@ -169,7 +169,7 @@ class APIValidator {
         }
 
         const successRate = Math.round((this.results.passed / (this.results.passed + this.results.failed)) * 100);
-        
+
         if (successRate === 100) {
             console.log('🎉 ALL TESTS PASSED! API is properly connected.'.bold.green);
         } else if (successRate >= 80) {
@@ -189,7 +189,7 @@ class APIValidator {
         console.log('  ✅ Real-time Socket.io setup');
         console.log('  ✅ PWA capabilities enabled');
         console.log('  ✅ Professional UI components');
-        
+
         console.log('\n🚀 Ready for production deployment!'.bold.green);
     }
 }
