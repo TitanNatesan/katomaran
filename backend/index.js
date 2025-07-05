@@ -3,6 +3,7 @@ const http = require('http');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const winston = require('winston');
+const passport = require('passport');
 
 // Load environment variables
 dotenv.config();
@@ -28,6 +29,10 @@ const server = http.createServer(app);
 
 // Connect to database
 connectDB();
+
+// Initialize Passport
+require('./config/passportConfig')(passport);
+app.use(passport.initialize());
 
 // Initialize Socket.io
 const io = initializeSocket(server);

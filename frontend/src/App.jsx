@@ -10,6 +10,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import AuthCallback from './pages/AuthCallback';
 import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 
@@ -34,6 +35,10 @@ const AppContent = () => {
         element={
           isAuthenticated ? <Navigate to="/dashboard" replace /> : <Register />
         }
+      />
+      <Route
+        path="/auth/callback"
+        element={<AuthCallback />}
       />
       <Route
         path="/dashboard"

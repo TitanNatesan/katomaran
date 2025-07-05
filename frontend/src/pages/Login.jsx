@@ -7,7 +7,7 @@ import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card';
 import { toast } from 'react-toastify';
-import { Eye, EyeOff, LogIn } from 'lucide-react';
+import { Eye, EyeOff, LogIn, Github } from 'lucide-react';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -45,6 +45,11 @@ const Login = () => {
 
     const handleGoogleError = () => {
         toast.error('Google login failed');
+    };
+
+    const handleGithubLogin = () => {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+        window.location.href = `${apiUrl}/auth/github`;
     };
 
     return (
@@ -133,7 +138,7 @@ const Login = () => {
                         </div>
                     </div>
 
-                    <div className="flex justify-center">
+                    <div className="grid grid-cols-1 gap-3">
                         <GoogleLogin
                             onSuccess={handleGoogleSuccess}
                             onError={handleGoogleError}
@@ -141,6 +146,16 @@ const Login = () => {
                             size="large"
                             width="100%"
                         />
+
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleGithubLogin}
+                            className="w-full"
+                        >
+                            <Github className="h-4 w-4 mr-2" />
+                            Continue with GitHub
+                        </Button>
                     </div>
 
                     <div className="text-center text-sm">
