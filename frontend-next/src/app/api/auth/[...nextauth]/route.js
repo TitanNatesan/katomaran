@@ -1,6 +1,7 @@
 import NextAuth from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
 import GitHubProvider from 'next-auth/providers/github'
+import CredentialsProvider from 'next-auth/providers/credentials'
 import axios from 'axios'
 
 export const authOptions = {
@@ -13,6 +14,38 @@ export const authOptions = {
             clientId: process.env.GITHUB_CLIENT_ID,
             clientSecret: process.env.GITHUB_CLIENT_SECRET,
         }),
+        CredentialsProvider({
+            name: 'credentials',
+            credentials: {
+                email: { label: 'Email', type: 'email' },
+                password: { label: 'Password', type: 'password' }
+            },
+            async authorize(credentials) {
+                if (!credentials?.email || !credentials?.password) {
+                    return null
+                }
+
+                try {
+                    const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/login`, {
+                        email: credentials.email,
+                        password: credentials.password
+                    })
+
+                    if (response.data.success && response.data.user) {
+                        return {
+                            id: response.data.user.id,
+                            email: response.data.user.email,
+                            name: response.data.user.name,
+                            backendToken: response.data.token
+                        }
+                    }
+                    return null
+                } catch (error) {
+                    console.error('Login error:', error)
+                    return null
+                }
+            }
+        })
     ],
     callbacks: {
         async jwt({ token, user, account }) {
@@ -43,9 +76,18 @@ export const authOptions = {
                                 githubId: user.id
                             }
                         }
+                    } else if (account.provider === 'credentials') {
+                        // For credentials, we already have the backend token
+                        token.backendToken = user.backendToken
+                        token.user = {
+                            id: user.id,
+                            email: user.email,
+                            name: user.name
+                        }
+                        return token
                     }
 
-                    // Send user data to backend for authentication
+                    // Send user data to backend for authentication (OAuth only)
                     if (backendEndpoint) {
                         const response = await axios.post(backendEndpoint, requestData)
                         token.backendToken = response.data.token
