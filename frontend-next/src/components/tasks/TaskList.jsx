@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useSocket } from '@/components/providers/SocketProvider'
+import { EditTaskModal } from './EditTaskModal'
+import { ConfirmationDialog } from '@/components/common/ConfirmationDialog'
+import { LoadingCard } from '@/components/common/LoadingComponents'
 import axios from 'axios'
 import { toast } from 'react-toastify'
 import { 
@@ -20,6 +23,10 @@ export function TaskList({ filters }) {
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [editingTask, setEditingTask] = useState(null)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [taskToDelete, setTaskToDelete] = useState(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   // Fetch tasks from backend
   useEffect(() => {
@@ -127,11 +134,38 @@ export function TaskList({ filters }) {
           },
         }
       )
+      toast.success('Task deleted successfully')
+      setIsDeleteDialogOpen(false)
+      setTaskToDelete(null)
       // Task will be removed via socket update
     } catch (error) {
       console.error('Error deleting task:', error)
       toast.error('Failed to delete task')
     }
+  }
+
+  const handleDeleteClick = (task) => {
+    setTaskToDelete(task)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDelete = () => {
+    if (taskToDelete) {
+      handleDeleteTask(taskToDelete._id)
+    }
+  }
+
+  const handleEditTask = (task) => {
+    setEditingTask(task)
+    setIsEditModalOpen(true)
+  }
+
+  const handleTaskUpdated = (updatedTask) => {
+    setTasks(prev => prev.map(task => 
+      task._id === updatedTask._id ? updatedTask : task
+    ))
+    setEditingTask(null)
+    setIsEditModalOpen(false)
   }
 
   const handleUpdateTaskStatus = async (taskId, newStatus) => {
@@ -186,9 +220,7 @@ export function TaskList({ filters }) {
     return (
       <div className="space-y-4">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="animate-pulse">
-            <div className="bg-gray-200 h-24 rounded-lg"></div>
-          </div>
+          <LoadingCard key={i} />
         ))}
       </div>
     )
@@ -222,72 +254,100 @@ export function TaskList({ filters }) {
   }
 
   return (
-    <div className="space-y-4">
-      {filteredTasks.map((task) => (
-        <div
-          key={task._id}
-          className={`bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow ${
-            isOverdue(task.dueDate, task.status) ? 'border-red-200' : 'border-gray-200'
-          }`}
-        >
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center space-x-3 mb-2">
-                {getStatusIcon(task.status)}
-                <h3 className="text-lg font-medium text-gray-900">
-                  {task.title}
-                </h3>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
-                  {task.priority}
-                </span>
+    <>
+      <div className="space-y-4">
+        {filteredTasks.map((task) => (
+          <div
+            key={task._id}
+            className={`bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow ${
+              isOverdue(task.dueDate, task.status) ? 'border-red-200' : 'border-gray-200'
+            }`}
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center space-x-3 mb-2">
+                  {getStatusIcon(task.status)}
+                  <h3 className="text-lg font-medium text-gray-900">
+                    {task.title}
+                  </h3>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
+                    {task.priority}
+                  </span>
+                </div>
+                
+                {task.description && (
+                  <p className="text-gray-600 mb-3">{task.description}</p>
+                )}
+                
+                <div className="flex items-center space-x-4 text-sm text-gray-500">
+                  <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                  <span>Status: {task.status.replace('_', ' ')}</span>
+                  {isOverdue(task.dueDate, task.status) && (
+                    <span className="text-red-600 font-medium">Overdue</span>
+                  )}
+                </div>
               </div>
               
-              {task.description && (
-                <p className="text-gray-600 mb-3">{task.description}</p>
-              )}
-              
-              <div className="flex items-center space-x-4 text-sm text-gray-500">
-                <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
-                <span>Status: {task.status.replace('_', ' ')}</span>
-                {isOverdue(task.dueDate, task.status) && (
-                  <span className="text-red-600 font-medium">Overdue</span>
-                )}
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handleUpdateTaskStatus(
+                    task._id,
+                    task.status === 'completed' ? 'pending' : 'completed'
+                  )}
+                  className={`p-2 rounded-full hover:bg-gray-100 ${
+                    task.status === 'completed' ? 'text-green-600' : 'text-gray-400'
+                  }`}
+                  title={task.status === 'completed' ? 'Mark as pending' : 'Mark as completed'}
+                >
+                  <CheckCircleIcon className="h-5 w-5" />
+                </button>
+                
+                <button
+                  onClick={() => handleEditTask(task)}
+                  className="p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-blue-600"
+                  title="Edit task"
+                >
+                  <PencilIcon className="h-5 w-5" />
+                </button>
+                
+                <button
+                  onClick={() => handleDeleteClick(task)}
+                  className="p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-red-600"
+                  title="Delete task"
+                >
+                  <TrashIcon className="h-5 w-5" />
+                </button>
               </div>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => handleUpdateTaskStatus(
-                  task._id,
-                  task.status === 'completed' ? 'pending' : 'completed'
-                )}
-                className={`p-2 rounded-full hover:bg-gray-100 ${
-                  task.status === 'completed' ? 'text-green-600' : 'text-gray-400'
-                }`}
-                title={task.status === 'completed' ? 'Mark as pending' : 'Mark as completed'}
-              >
-                <CheckCircleIcon className="h-5 w-5" />
-              </button>
-              
-              <button
-                onClick={() => {/* TODO: Implement edit */}}
-                className="p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-blue-600"
-                title="Edit task"
-              >
-                <PencilIcon className="h-5 w-5" />
-              </button>
-              
-              <button
-                onClick={() => handleDeleteTask(task._id)}
-                className="p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-red-600"
-                title="Delete task"
-              >
-                <TrashIcon className="h-5 w-5" />
-              </button>
             </div>
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+      
+      {/* Edit Task Modal */}
+      <EditTaskModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false)
+          setEditingTask(null)
+        }}
+        task={editingTask}
+        onTaskUpdated={handleTaskUpdated}
+      />
+      
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => {
+          setIsDeleteDialogOpen(false)
+          setTaskToDelete(null)
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete Task"
+        message={`Are you sure you want to delete "${taskToDelete?.title}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        isDangerous={true}
+      />
+    </>
   )
 }

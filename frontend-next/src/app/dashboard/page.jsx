@@ -2,12 +2,13 @@
 
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { TaskList } from '@/components/tasks/TaskList'
 import { TaskFilters } from '@/components/tasks/TaskFilters'
 import { TaskStats } from '@/components/tasks/TaskStats'
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
+import { useKeyboardShortcuts } from '@/components/common/KeyboardShortcuts'
 import { PlusIcon } from '@heroicons/react/24/outline'
 
 export default function Dashboard() {
@@ -19,6 +20,16 @@ export default function Dashboard() {
     priority: 'all',
     search: '',
     dueDate: 'all'
+  })
+  const searchInputRef = useRef(null)
+
+  useKeyboardShortcuts({
+    onNewTask: () => setIsCreateModalOpen(true),
+    onSearch: () => searchInputRef.current?.focus(),
+    onEscape: () => {
+      setIsCreateModalOpen(false)
+      searchInputRef.current?.blur()
+    }
   })
 
   useEffect(() => {
@@ -70,7 +81,8 @@ export default function Dashboard() {
         {/* Filters */}
         <TaskFilters 
           filters={filters} 
-          onFiltersChange={setFilters} 
+          onFiltersChange={setFilters}
+          searchInputRef={searchInputRef}
         />
 
         {/* Task List */}
