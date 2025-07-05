@@ -19,6 +19,12 @@ export default function Register() {
     })
     const [error, setError] = useState('')
     const [success, setSuccess] = useState('')
+    const [passwordStrength, setPasswordStrength] = useState({
+        length: false,
+        uppercase: false,
+        lowercase: false,
+        number: false
+    })
 
     const handleInputChange = (e) => {
         const { name, value } = e.target
@@ -26,6 +32,16 @@ export default function Register() {
             ...prev,
             [name]: value
         }))
+
+        // Check password strength in real-time
+        if (name === 'password') {
+            setPasswordStrength({
+                length: value.length >= 6,
+                uppercase: /[A-Z]/.test(value),
+                lowercase: /[a-z]/.test(value),
+                number: /\d/.test(value)
+            })
+        }
     }
 
     const handleSubmit = async (e) => {
@@ -48,6 +64,14 @@ export default function Register() {
             return
         }
 
+        // Validate password complexity
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/
+        if (!passwordRegex.test(formData.password)) {
+            setError('Password must contain at least one uppercase letter, one lowercase letter, and one number')
+            setIsLoading(false)
+            return
+        }
+
         try {
             const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/register`, {
                 name: formData.name,
@@ -63,7 +87,12 @@ export default function Register() {
             }
         } catch (error) {
             console.error('Registration error:', error)
-            setError(error.response?.data?.message || 'Registration failed. Please try again.')
+            if (error.response?.data?.errors && error.response.data.errors.length > 0) {
+                // Display first validation error from the server
+                setError(error.response.data.errors[0].msg || 'Validation error occurred')
+            } else {
+                setError(error.response?.data?.message || 'Registration failed. Please try again.')
+            }
         } finally {
             setIsLoading(false)
         }
@@ -167,9 +196,32 @@ export default function Register() {
                                     )}
                                 </button>
                             </div>
-                            <p className="mt-1 text-xs text-gray-500">
-                                Password must be at least 6 characters long
-                            </p>
+                            <div className="mt-2 text-xs space-y-1">
+                                <div className="flex items-center space-x-2">
+                                    <div className={`w-2 h-2 rounded-full ${passwordStrength.length ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                                    <span className={passwordStrength.length ? 'text-green-600' : 'text-gray-500'}>
+                                        At least 6 characters
+                                    </span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <div className={`w-2 h-2 rounded-full ${passwordStrength.uppercase ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                                    <span className={passwordStrength.uppercase ? 'text-green-600' : 'text-gray-500'}>
+                                        One uppercase letter
+                                    </span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <div className={`w-2 h-2 rounded-full ${passwordStrength.lowercase ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                                    <span className={passwordStrength.lowercase ? 'text-green-600' : 'text-gray-500'}>
+                                        One lowercase letter
+                                    </span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <div className={`w-2 h-2 rounded-full ${passwordStrength.number ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                                    <span className={passwordStrength.number ? 'text-green-600' : 'text-gray-500'}>
+                                        One number
+                                    </span>
+                                </div>
+                            </div>
                         </div>
 
                         <div>

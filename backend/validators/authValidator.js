@@ -11,7 +11,8 @@ const registerValidation = [
         .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
         .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
     body('name')
-        .optional()
+        .notEmpty()
+        .withMessage('Name is required')
         .trim()
         .isLength({ min: 2, max: 50 })
         .withMessage('Name must be between 2 and 50 characters')
