@@ -14,7 +14,13 @@ const AuthCallback = () => {
             const error = searchParams.get('error');
 
             if (error) {
-                toast.error('Authentication failed. Please try again.');
+                if (error === 'github_not_configured') {
+                    toast.error('GitHub authentication is not configured on this server');
+                } else if (error === 'google_not_configured') {
+                    toast.error('Google authentication is not configured on this server');
+                } else {
+                    toast.error('Authentication failed. Please try again.');
+                }
                 navigate('/login');
                 return;
             }

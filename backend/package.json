@@ -4,7 +4,8 @@
     "description": "Professional-grade backend for task management application",
     "main": "index.js",
     "scripts": {
-        "start": "node index.js",
+        "start": "node start.js",
+        "start:direct": "node index.js",
         "dev": "nodemon index.js",
         "test": "cross-env NODE_ENV=test jest --testTimeout=10000 --detectOpenHandles --forceExit"
     },
@@ -28,6 +29,7 @@
         "mongoose": "^8.0.3",
         "passport": "^0.7.0",
         "passport-github2": "^0.1.12",
+        "passport-google-oauth20": "^2.0.0",
         "socket.io": "^4.7.4",
         "winston": "^3.11.0"
     },

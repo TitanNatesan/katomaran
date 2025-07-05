@@ -30,6 +30,9 @@ const server = http.createServer(app);
 // Connect to database
 connectDB();
 
+// Enable trust proxy for Render's X-Forwarded-For header (fixes rate limit issue)
+app.set('trust proxy', 1);
+
 // Initialize Passport
 require('./config/passportConfig')(passport);
 app.use(passport.initialize());
@@ -45,9 +48,16 @@ app.use((req, res, next) => {
 
 // CORS configuration
 const corsOptions = {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: [
+        process.env.FRONTEND_URL || 'http://localhost:3000',
+        'https://katomaran-todo-josh.vercel.app',
+        'https://katamaran-todo-josh.vercel.app', // Added the corrected URL from your prompt
+        'http://localhost:5173',
+        'http://localhost:3000'
+    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
-    optionSuccessStatus: 200
+    optionsSuccessStatus: 200
 };
 
 // Middleware
