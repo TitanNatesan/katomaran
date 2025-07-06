@@ -132,23 +132,68 @@ const updateTask = async (req, res, next) => {
             });
         }
 
+        // Enhanced input validation
+        if (!req.params.id || !req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid task ID format'
+            });
+        }
+
+        // First check if task exists and user has access
         const task = await Task.findOne({
             _id: req.params.id,
-            creator: req.user.id
+            $or: [
+                { creator: req.user.id },
+                { sharedWith: req.user.id }
+            ]
         });
 
         if (!task) {
-            return res.status(404).json({ message: 'Task not found or not authorized' });
+            return res.status(404).json({
+                success: false,
+                message: 'Task not found or you do not have permission to access this task'
+            });
         }
 
-        const allowedUpdates = ['title', 'description', 'dueDate', 'priority', 'status', 'sharedWith'];
-        const updates = {};
+        // Check if user is the creator or has shared access
+        const isCreator = task.creator.toString() === req.user.id.toString();
+        const hasSharedAccess = task.sharedWith.some(userId => userId.toString() === req.user.id.toString());
 
+        if (!isCreator && !hasSharedAccess) {
+            return res.status(403).json({
+                success: false,
+                message: 'You are not authorized to update this task'
+            });
+        }
+
+        // Only creators can modify sharing settings
+        const allowedUpdates = ['title', 'description', 'dueDate', 'priority', 'status'];
+        if (isCreator) {
+            allowedUpdates.push('sharedWith');
+        }
+
+        const updates = {};
         allowedUpdates.forEach(field => {
             if (req.body[field] !== undefined) {
                 updates[field] = req.body[field];
             }
         });
+
+        // Validate specific fields
+        if (updates.priority && !['low', 'medium', 'high'].includes(updates.priority)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid priority value. Must be low, medium, or high'
+            });
+        }
+
+        if (updates.status && !['pending', 'in progress', 'completed'].includes(updates.status)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid status value. Must be pending, in progress, or completed'
+            });
+        }
 
         const updatedTask = await Task.findByIdAndUpdate(
             req.params.id,
@@ -158,13 +203,34 @@ const updateTask = async (req, res, next) => {
             .populate('creator', 'name email')
             .populate('sharedWith', 'name email');
 
-        logger.info(`Task updated: ${updatedTask.title} by ${req.user.email}`);
+        if (!updatedTask) {
+            return res.status(404).json({
+                success: false,
+                message: 'Task not found after update'
+            });
+        }
+
+        logger.info(`Task updated: ${updatedTask.title} by ${req.user.email} (Creator: ${isCreator})`);
 
         res.json({
             success: true,
+            message: 'Task updated successfully',
             task: updatedTask
         });
     } catch (error) {
+        logger.error(`Task update error: ${error.message}`);
+
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation failed',
+                errors: Object.values(error.errors).map(err => ({
+                    field: err.path,
+                    message: err.message
+                }))
+            });
+        }
+
         next(error);
     }
 };
@@ -174,16 +240,49 @@ const updateTask = async (req, res, next) => {
 // @access  Private
 const deleteTask = async (req, res, next) => {
     try {
+        // Enhanced input validation
+        if (!req.params.id || !req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid task ID format'
+            });
+        }
+
+        // First check if task exists and user has access
         const task = await Task.findOne({
             _id: req.params.id,
-            creator: req.user.id
+            $or: [
+                { creator: req.user.id },
+                { sharedWith: req.user.id }
+            ]
         });
 
         if (!task) {
-            return res.status(404).json({ message: 'Task not found or not authorized' });
+            return res.status(404).json({
+                success: false,
+                message: 'Task not found or you do not have permission to access this task'
+            });
         }
 
-        await Task.findByIdAndDelete(req.params.id);
+        // Check if user is the creator
+        const isCreator = task.creator.toString() === req.user.id.toString();
+
+        // Only creators can delete tasks
+        if (!isCreator) {
+            return res.status(403).json({
+                success: false,
+                message: 'Only the task creator can delete this task'
+            });
+        }
+
+        const deletedTask = await Task.findByIdAndDelete(req.params.id);
+
+        if (!deletedTask) {
+            return res.status(404).json({
+                success: false,
+                message: 'Task not found or already deleted'
+            });
+        }
 
         logger.info(`Task deleted: ${task.title} by ${req.user.email}`);
 
@@ -192,6 +291,7 @@ const deleteTask = async (req, res, next) => {
             message: 'Task deleted successfully'
         });
     } catch (error) {
+        logger.error(`Task deletion error: ${error.message}`);
         next(error);
     }
 };
@@ -258,26 +358,68 @@ const shareTask = async (req, res, next) => {
 // @access  Private
 const patchTask = async (req, res, next) => {
     try {
+        // Enhanced input validation
+        if (!req.params.id || !req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid task ID format'
+            });
+        }
+
+        // First check if task exists and user has access
         const task = await Task.findOne({
             _id: req.params.id,
-            creator: req.user.id
+            $or: [
+                { creator: req.user.id },
+                { sharedWith: req.user.id }
+            ]
         });
 
         if (!task) {
             return res.status(404).json({
                 success: false,
-                message: 'Task not found or not authorized'
+                message: 'Task not found or you do not have permission to access this task'
             });
         }
 
-        const allowedUpdates = ['title', 'description', 'dueDate', 'priority', 'status', 'sharedWith'];
-        const updates = {};
+        // Check if user is the creator or has shared access
+        const isCreator = task.creator.toString() === req.user.id.toString();
+        const hasSharedAccess = task.sharedWith.some(userId => userId.toString() === req.user.id.toString());
 
+        if (!isCreator && !hasSharedAccess) {
+            return res.status(403).json({
+                success: false,
+                message: 'You are not authorized to update this task'
+            });
+        }
+
+        // Only creators can modify sharing settings
+        const allowedUpdates = ['title', 'description', 'dueDate', 'priority', 'status'];
+        if (isCreator) {
+            allowedUpdates.push('sharedWith');
+        }
+
+        const updates = {};
         allowedUpdates.forEach(field => {
             if (req.body[field] !== undefined) {
                 updates[field] = req.body[field];
             }
         });
+
+        // Validate specific fields
+        if (updates.priority && !['low', 'medium', 'high'].includes(updates.priority)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid priority value. Must be low, medium, or high'
+            });
+        }
+
+        if (updates.status && !['pending', 'in progress', 'completed'].includes(updates.status)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid status value. Must be pending, in progress, or completed'
+            });
+        }
 
         const updatedTask = await Task.findByIdAndUpdate(
             req.params.id,
@@ -287,13 +429,22 @@ const patchTask = async (req, res, next) => {
             .populate('creator', 'name email')
             .populate('sharedWith', 'name email');
 
-        logger.info(`Task patched: ${updatedTask.title} by ${req.user.email}`);
+        if (!updatedTask) {
+            return res.status(404).json({
+                success: false,
+                message: 'Task not found after update'
+            });
+        }
+
+        logger.info(`Task patched: ${updatedTask.title} by ${req.user.email} (Creator: ${isCreator})`);
 
         res.json({
             success: true,
+            message: 'Task updated successfully',
             task: updatedTask
         });
     } catch (error) {
+        logger.error(`Task patch error: ${error.message}`);
         next(error);
     }
 };

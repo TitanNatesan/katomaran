@@ -86,10 +86,30 @@ export function CreateTaskModal({ isOpen, onClose, onTaskCreated }) {
             }
         } catch (error) {
             console.error('Error creating task:', error)
-            const errorMessage = error.response?.data?.message || 'Failed to create task';
-            toast.error(errorMessage);
+
+            if (error.response?.status === 401) {
+                toast.error('Authentication failed. Please login again.')
+                // Clear invalid token and redirect
+                const { clearAuthToken } = require('@/utils/authUtils');
+                clearAuthToken();
+                setTimeout(() => {
+                    window.location.href = '/login?error=token_expired';
+                }, 1500);
+            } else if (error.response?.status === 403) {
+                toast.error('You are not authorized to create tasks')
+            } else if (error.response?.data?.message) {
+                toast.error(`Creation failed: ${error.response.data.message}`)
+            } else if (error.message === 'Authentication token is missing') {
+                toast.error('Please log in to create tasks')
+            } else {
+                toast.error(`Failed to create task: ${error.message}`)
+            }
+
+            // Display validation errors if any
             if (error.response?.data?.errors) {
-                error.response.data.errors.forEach(err => toast.error(`${err.path ? `${err.path}: ` : ''}${err.msg}`));
+                error.response.data.errors.forEach(err => {
+                    toast.error(`${err.path ? `${err.path}: ` : ''}${err.msg}`)
+                });
             }
         } finally {
             setIsSubmitting(false)

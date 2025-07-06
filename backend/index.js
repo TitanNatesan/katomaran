@@ -18,7 +18,7 @@ const { generalLimiter } = require('./middleware/rateLimiter');
 // Import routes
 const authRoutes = require('./routes/auth');
 const taskRoutes = require('./routes/tasks');
-const userRoutes = require('./routes/userRoutes'); // Import userRoutes
+const userRoutes = require('./routes/users'); // Import users routes
 
 // Initialize Express app
 const app = express();

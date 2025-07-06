@@ -106,10 +106,25 @@ export function EditTaskModal({ isOpen, onClose, task, onTaskUpdated }) {
             onClose()
         } catch (error) {
             console.error('Error updating task:', error)
-            if (error.response?.data?.message) {
-                toast.error(error.response.data.message)
+
+            if (error.response?.status === 401) {
+                toast.error('Authentication failed. Please login again.')
+                // Clear invalid token and redirect
+                const { clearAuthToken } = require('@/utils/authUtils');
+                clearAuthToken();
+                setTimeout(() => {
+                    window.location.href = '/login?error=token_expired';
+                }, 1500);
+            } else if (error.response?.status === 403) {
+                toast.error('You are not authorized to update this task')
+            } else if (error.response?.status === 404) {
+                toast.error('Task not found')
+            } else if (error.response?.data?.message) {
+                toast.error(`Update failed: ${error.response.data.message}`)
+            } else if (error.message === 'Authentication token is missing') {
+                toast.error('Please log in to update tasks')
             } else {
-                toast.error('Failed to update task')
+                toast.error(`Failed to update task: ${error.message}`)
             }
         } finally {
             setIsSubmitting(false)

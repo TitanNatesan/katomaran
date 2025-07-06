@@ -176,12 +176,19 @@ export function TaskList({ filters, onTaskUpdate, onTaskDelete }) {
 
     const handleDeleteTask = async (taskId) => {
         try {
+            // Get token using our utility function
+            const backendToken = getAuthToken(session);
+
+            if (!backendToken) {
+                console.error('No authentication token available for task deletion');
+                toast.error('Authentication required. Please log in again.');
+                return;
+            }
+
             await axios.delete(
                 `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks/${taskId}`,
                 {
-                    headers: {
-                        Authorization: `Bearer ${session?.backendToken}`,
-                    },
+                    headers: getAuthHeaders(backendToken)
                 }
             )
             toast.success('Task deleted successfully')
@@ -189,9 +196,25 @@ export function TaskList({ filters, onTaskUpdate, onTaskDelete }) {
             setTaskToDelete(null)
             // Refresh the task list after deletion
             await refreshTasks()
+            // Notify parent component
+            if (onTaskDelete) onTaskDelete()
         } catch (error) {
             console.error('Error deleting task:', error)
-            toast.error('Failed to delete task')
+            if (error.response?.status === 401) {
+                toast.error('Authentication failed. Please login again.')
+                // Clear invalid token and redirect
+                const { clearAuthToken } = require('@/utils/authUtils');
+                clearAuthToken();
+                setTimeout(() => {
+                    window.location.href = '/login?error=token_expired';
+                }, 1500);
+            } else if (error.response?.status === 403) {
+                toast.error('You are not authorized to delete this task')
+            } else if (error.response?.status === 404) {
+                toast.error('Task not found')
+            } else {
+                toast.error(`Failed to delete task: ${error.response?.data?.message || error.message}`)
+            }
         }
     }
 
@@ -221,30 +244,43 @@ export function TaskList({ filters, onTaskUpdate, onTaskDelete }) {
 
     const handleUpdateTaskStatus = async (taskId, newStatus) => {
         try {
-            if (!session?.backendToken) {
-                toast.error('Please login with email/password to update tasks')
-                return
+            // Get token using our utility function
+            const backendToken = getAuthToken(session);
+
+            if (!backendToken) {
+                console.error('No authentication token available for task update');
+                toast.error('Authentication required. Please log in again.');
+                return;
             }
 
             await axios.patch(
                 `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks/${taskId}`,
                 { status: newStatus },
                 {
-                    headers: {
-                        Authorization: `Bearer ${session.backendToken}`,
-                        'Content-Type': 'application/json'
-                    },
+                    headers: getAuthHeaders(backendToken)
                 }
             )
             // Refresh the task list after update
             await refreshTasks()
             toast.success('Task status updated!')
+            // Notify parent component
+            if (onTaskUpdate) onTaskUpdate()
         } catch (error) {
             console.error('Error updating task:', error)
             if (error.response?.status === 401) {
                 toast.error('Authentication failed. Please login again.')
+                // Clear invalid token and redirect
+                const { clearAuthToken } = require('@/utils/authUtils');
+                clearAuthToken();
+                setTimeout(() => {
+                    window.location.href = '/login?error=token_expired';
+                }, 1500);
+            } else if (error.response?.status === 403) {
+                toast.error('You are not authorized to update this task')
+            } else if (error.response?.status === 404) {
+                toast.error('Task not found')
             } else {
-                toast.error('Failed to update task')
+                toast.error(`Failed to update task: ${error.response?.data?.message || error.message}`)
             }
         }
     }
