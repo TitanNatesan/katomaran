@@ -29,7 +29,11 @@ const userSchema = new mongoose.Schema({
         }
     },
     avatar: {
-        type: String
+        type: String,
+        default: function () {
+            // Generate a consistent avatar using robohash.org based on email
+            return `https://robohash.org/${encodeURIComponent(this.email || 'default')}?set=set1&size=200x200`;
+        }
     },
     createdAt: {
         type: Date,

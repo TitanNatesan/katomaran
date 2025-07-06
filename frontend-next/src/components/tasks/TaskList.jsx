@@ -13,11 +13,12 @@ import {
     CheckCircleIcon,
     XCircleIcon,
     ClockIcon,
-    ExclamationCircleIcon
+    ExclamationCircleIcon,
+    UserGroupIcon
 } from '@heroicons/react/24/outline'
 import { getAuthToken, getAuthHeaders } from '@/utils/authUtils'
 
-export function TaskList({ filters, onTaskUpdate, onTaskDelete }) {
+export function TaskList({ filters, onTaskUpdate, onTaskDelete, viewType = 'all' }) {
     const { data: session } = useSession()
     const [tasks, setTasks] = useState([])
     const [loading, setLoading] = useState(true)
@@ -115,7 +116,7 @@ export function TaskList({ filters, onTaskUpdate, onTaskDelete }) {
         if (session?.user || getAuthToken(session)) {
             fetchTasks()
         }
-    }, [session, filters, refreshTrigger])
+    }, [session, filters, refreshTrigger, viewType])
 
     // Refresh tasks function for manual updates
     const refreshTasks = async () => {
@@ -141,8 +142,25 @@ export function TaskList({ filters, onTaskUpdate, onTaskDelete }) {
         }
     }
 
-    // Filter tasks based on filters
+    // Filter tasks based on filters and view type
     const filteredTasks = tasks.filter((task) => {
+        // First filter by view type
+        const currentUserId = session?.user?.id;
+        let matchesViewType = true;
+
+        if (viewType === 'my-tasks') {
+            // Show only tasks created by the current user
+            matchesViewType = task.creator?._id === currentUserId || task.creator === currentUserId;
+        } else if (viewType === 'shared-tasks') {
+            // Show only tasks shared with the current user (not created by them)
+            const isSharedWith = task.sharedWith?.some(user =>
+                (typeof user === 'object' ? user._id : user) === currentUserId
+            );
+            const isNotCreatedByUser = task.creator?._id !== currentUserId && task.creator !== currentUserId;
+            matchesViewType = isSharedWith && isNotCreatedByUser;
+        }
+        // For 'all' view type, show all tasks (default behavior)
+
         const matchesSearch = !filters.search ||
             task.title.toLowerCase().includes(filters.search.toLowerCase()) ||
             task.description.toLowerCase().includes(filters.search.toLowerCase())
@@ -171,7 +189,7 @@ export function TaskList({ filters, onTaskUpdate, onTaskDelete }) {
             }
         }
 
-        return matchesSearch && matchesStatus && matchesPriority && matchesDueDate
+        return matchesViewType && matchesSearch && matchesStatus && matchesPriority && matchesDueDate
     })
 
     const handleDeleteTask = async (taskId) => {
@@ -371,6 +389,19 @@ export function TaskList({ filters, onTaskUpdate, onTaskDelete }) {
                                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
                                         {task.priority}
                                     </span>
+                                    {/* Show sharing indicator */}
+                                    {task.sharedWith && task.sharedWith.length > 0 && (
+                                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 flex items-center space-x-1">
+                                            <UserGroupIcon className="h-3 w-3" />
+                                            <span>Shared</span>
+                                        </span>
+                                    )}
+                                    {/* Show if this is a shared task (not created by current user) */}
+                                    {task.creator?._id !== session?.user?.id && task.creator !== session?.user?.id && (
+                                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 flex items-center space-x-1">
+                                            <span>From: {task.creator?.name || task.creator?.email}</span>
+                                        </span>
+                                    )}
                                 </div>
 
                                 {task.description && (

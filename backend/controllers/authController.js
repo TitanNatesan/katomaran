@@ -166,17 +166,22 @@ const githubAuth = async (req, res, next) => {
             // Update existing user with GitHub info if not already set
             if (!user.githubId) {
                 user.githubId = githubUserData.id.toString();
-                user.avatar = user.avatar || githubUserData.avatar_url;
+                // Use GitHub avatar if available, otherwise keep existing or use robohash fallback
+                user.avatar = githubUserData.avatar_url || user.avatar ||
+                    `https://robohash.org/${encodeURIComponent(email)}?set=set1&size=200x200`;
                 user.name = user.name || githubUserData.name || githubUserData.login;
                 await user.save();
             }
         } else {
-            // Create new user
+            // Create new user with proper avatar fallback
+            const avatarUrl = githubUserData.avatar_url ||
+                `https://robohash.org/${encodeURIComponent(email)}?set=set1&size=200x200`;
+
             user = new User({
                 email: email,
                 githubId: githubUserData.id.toString(),
                 name: githubUserData.name || githubUserData.login || email.split('@')[0],
-                avatar: githubUserData.avatar_url
+                avatar: avatarUrl
             });
             await user.save();
         }

@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { signOut, useSession } from 'next-auth/react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
     Bars3Icon,
     XMarkIcon,
@@ -14,68 +14,78 @@ import {
     CogIcon,
     ArrowRightOnRectangleIcon,
     BellIcon,
-    MagnifyingGlassIcon
+    MagnifyingGlassIcon,
+    UserGroupIcon,
+    ChartPieIcon
 } from '@heroicons/react/24/outline'
 
 const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: HomeIcon, current: true },
-    { name: 'Tasks', href: '/tasks', icon: ClipboardDocumentListIcon, current: false },
-    { name: 'Analytics', href: '/analytics', icon: ChartBarIcon, current: false },
-    { name: 'Settings', href: '/settings', icon: CogIcon, current: false },
+    { name: 'Dashboard', href: '/dashboard', icon: HomeIcon, key: 'dashboard' },
+    { name: 'My Tasks', href: '/dashboard?view=my-tasks', icon: ClipboardDocumentListIcon, key: 'my-tasks' },
+    { name: 'Shared Tasks', href: '/dashboard?view=shared-tasks', icon: UserGroupIcon, key: 'shared-tasks' },
+    { name: 'Analytics', href: '/dashboard?view=analytics', icon: ChartPieIcon, key: 'analytics' },
+    { name: 'Settings', href: '/dashboard?view=settings', icon: CogIcon, key: 'settings' },
 ]
 
 export function DashboardLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const { data: session } = useSession()
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const [currentView, setCurrentView] = useState('dashboard')
+
+    // Update current view based on URL parameters
+    useEffect(() => {
+        const view = searchParams.get('view') || 'dashboard'
+        setCurrentView(view)
+    }, [searchParams])
+
+    // Generate a consistent avatar URL using robohash.org
+    const getAvatarUrl = (user) => {
+        if (user?.image) {
+            return user.image;
+        }
+        // Use user email or ID to generate consistent robot avatar
+        const identifier = user?.email || user?.id || 'default';
+        return `https://robohash.org/${encodeURIComponent(identifier)}?set=set1&size=200x200`;
+    }
 
     const handleSignOut = async () => {
         try {
-            console.log('Starting logout process...');
+            console.log('Starting simplified logout process...');
 
-            // 1. Import the clearAuthToken function to clean client-side storage
+            // For GitHub users, just clear everything and redirect to home
             const { clearAuthToken } = await import('@/utils/authUtils');
 
-            // 2. Clear all client-side tokens and storage first
+            // Clear all client-side data
             clearAuthToken();
 
-            // 3. Call the backend logout API to clear server-side session and cookies
-            try {
-                const response = await fetch('/api/auth/logout', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    credentials: 'include' // Important to include cookies
-                });
-
-                if (!response.ok) {
-                    console.warn('Backend logout endpoint returned non-OK status:', response.status);
+            // Clear all site data (more aggressive cleanup)
+            if (typeof window !== 'undefined') {
+                try {
+                    // Clear all localStorage
+                    localStorage.clear();
+                    // Clear all sessionStorage
+                    sessionStorage.clear();
+                    // Clear all cookies by setting them to expire
+                    document.cookie.split(";").forEach(function (c) {
+                        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                    });
+                } catch (error) {
+                    console.warn('Error clearing site data:', error);
                 }
-            } catch (apiError) {
-                console.error('Error calling logout endpoint:', apiError);
-                // Continue with signOut even if this fails
             }
 
-            // 4. Finally use NextAuth signOut as the last step
-            // The callbackUrl ensures we redirect to login page after signOut completes
-            console.log('Calling NextAuth signOut...');
+            // Use NextAuth signOut but redirect to home page
             await signOut({
-                callbackUrl: '/login?logout=success',
+                callbackUrl: '/',
                 redirect: true
             });
 
-            // 5. If for some reason the redirect doesn't happen, force it
-            setTimeout(() => {
-                console.log('Fallback redirect timer triggered');
-                window.location.href = '/login?logout=timeout';
-            }, 1000);
-
         } catch (error) {
-            console.error('Error during sign out:', error);
-
-            // Force redirect to login on error
-            window.location.href = '/login?error=logout_failed';
+            console.error('Error during logout:', error);
+            // Force redirect to home page on any error
+            window.location.href = '/';
         }
     }
 
@@ -99,23 +109,26 @@ export function DashboardLayout({ children }) {
                             <span className="text-2xl font-bold text-blue-600">Katomaran</span>
                         </div>
                         <nav className="mt-5 px-2 space-y-1">
-                            {navigation.map((item, i) => (
-                                <Link
-                                    key={i}
-                                    href={item.href}
-                                    className={`${item.current
-                                        ? 'bg-gray-100 text-gray-900'
-                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                                        } group flex items-center px-2 py-2 text-base font-medium rounded-md`}
-                                >
-                                    <item.icon
-                                        className={`${item.current ? 'text-gray-500' : 'text-gray-400 group-hover:text-gray-500'
-                                            } mr-4 h-6 w-6`}
-                                        aria-hidden="true"
-                                    />
-                                    {item.name}
-                                </Link>
-                            ))}
+                            {navigation.map((item, i) => {
+                                const isActive = item.key === currentView
+                                return (
+                                    <Link
+                                        key={i}
+                                        href={item.href}
+                                        className={`${isActive
+                                            ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
+                                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                            } group flex items-center px-2 py-2 text-base font-medium rounded-md transition-colors duration-200`}
+                                    >
+                                        <item.icon
+                                            className={`${isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-500'
+                                                } mr-4 h-6 w-6`}
+                                            aria-hidden="true"
+                                        />
+                                        {item.name}
+                                    </Link>
+                                )
+                            })}
                         </nav>
                     </div>
                     <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
@@ -123,7 +136,7 @@ export function DashboardLayout({ children }) {
                             <div className="flex-shrink-0">
                                 <Image
                                     className="h-8 w-8 rounded-full"
-                                    src={session?.user?.image || '/default-avatar.png'}
+                                    src={getAvatarUrl(session?.user)}
                                     alt="User avatar"
                                     width={32}
                                     height={32}
@@ -148,23 +161,26 @@ export function DashboardLayout({ children }) {
                                 <span className="text-2xl font-bold text-blue-600">Katomaran</span>
                             </div>
                             <nav className="mt-5 flex-1 px-2 space-y-1">
-                                {navigation.map((item, i) => (
-                                    <Link
-                                        key={i}
-                                        href={item.href}
-                                        className={`${item.current
-                                            ? 'bg-gray-100 text-gray-900'
-                                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                                            } group flex items-center px-2 py-2 text-sm font-medium rounded-md`}
-                                    >
-                                        <item.icon
-                                            className={`${item.current ? 'text-gray-500' : 'text-gray-400 group-hover:text-gray-500'
-                                                } mr-3 h-6 w-6`}
-                                            aria-hidden="true"
-                                        />
-                                        {item.name}
-                                    </Link>
-                                ))}
+                                {navigation.map((item, i) => {
+                                    const isActive = item.key === currentView
+                                    return (
+                                        <Link
+                                            key={i}
+                                            href={item.href}
+                                            className={`${isActive
+                                                ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
+                                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                                } group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors duration-200`}
+                                        >
+                                            <item.icon
+                                                className={`${isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-500'
+                                                    } mr-3 h-6 w-6`}
+                                                aria-hidden="true"
+                                            />
+                                            {item.name}
+                                        </Link>
+                                    )
+                                })}
                             </nav>
                         </div>
                         <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
@@ -172,7 +188,7 @@ export function DashboardLayout({ children }) {
                                 <div className="flex-shrink-0">
                                     <Image
                                         className="h-8 w-8 rounded-full"
-                                        src={session?.user?.image || '/default-avatar.png'}
+                                        src={getAvatarUrl(session?.user)}
                                         alt="User avatar"
                                         width={32}
                                         height={32}
