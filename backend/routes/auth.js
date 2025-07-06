@@ -2,7 +2,7 @@ const express = require('express');
 const passport = require('passport');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
-const { register, login, getMe } = require('../controllers/authController');
+const { register, login, githubAuth, getMe } = require('../controllers/authController');
 const { registerValidation, loginValidation } = require('../validators/authValidator');
 const authMiddleware = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimiter');
@@ -21,6 +21,11 @@ router.post('/register', registerValidation, register);
 // @desc    Login user
 // @access  Public
 router.post('/login', loginValidation, login);
+
+// @route   POST /api/auth/github
+// @desc    GitHub OAuth authentication
+// @access  Public
+router.post('/github', githubAuth);
 
 // @route   GET /api/auth/github
 // @desc    GitHub OAuth login
