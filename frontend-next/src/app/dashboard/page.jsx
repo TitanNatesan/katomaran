@@ -362,10 +362,19 @@ function DashboardContent() {
 
 export default function Dashboard() {
     return (
-        <DashboardLayout>
-            <Suspense fallback={<DashboardLoading />}>
-                <DashboardContent />
-            </Suspense>
+        <Suspense fallback={<DashboardLoading />}>
+            <DashboardWithSearchParams />
+        </Suspense>
+    );
+}
+
+function DashboardWithSearchParams() {
+    const searchParams = useSearchParams()
+    const currentView = searchParams.get('view') || 'dashboard'
+
+    return (
+        <DashboardLayout currentView={currentView}>
+            <DashboardContent />
         </DashboardLayout>
     );
 }

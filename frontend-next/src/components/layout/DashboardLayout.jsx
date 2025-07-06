@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { signOut, useSession } from 'next-auth/react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import {
     Bars3Icon,
     XMarkIcon,
@@ -27,18 +27,10 @@ const navigation = [
     { name: 'Settings', href: '/dashboard?view=settings', icon: CogIcon, key: 'settings' },
 ]
 
-export function DashboardLayout({ children }) {
+export function DashboardLayout({ children, currentView = 'dashboard' }) {
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const { data: session } = useSession()
     const router = useRouter()
-    const searchParams = useSearchParams()
-    const [currentView, setCurrentView] = useState('dashboard')
-
-    // Update current view based on URL parameters
-    useEffect(() => {
-        const view = searchParams.get('view') || 'dashboard'
-        setCurrentView(view)
-    }, [searchParams])
 
     // Generate a consistent avatar URL using robohash.org
     const getAvatarUrl = (user) => {
