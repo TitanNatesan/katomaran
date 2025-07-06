@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, Suspense } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { TaskList } from '@/components/tasks/TaskList'
 import { TaskFilters } from '@/components/tasks/TaskFilters'
@@ -12,7 +12,17 @@ import { useKeyboardShortcuts } from '@/components/common/KeyboardShortcuts'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import { storeAuthToken } from '@/utils/authUtils'
 
-export default function Dashboard() {
+// Loading component for Suspense fallback
+function DashboardLoading() {
+    return (
+        <div className="min-h-screen flex items-center justify-center">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+        </div>
+    );
+}
+
+// The actual Dashboard content with useSearchParams
+function DashboardContent() {
     const { data: session, status } = useSession()
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -96,67 +106,72 @@ export default function Dashboard() {
     }, [searchParams, router]);
 
     if (status === 'loading') {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-            </div>
-        )
+        return <DashboardLoading />;
     }
 
     if (status === 'unauthenticated') {
         return null // Will redirect to login
     }
+
+    return (
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">
+                        Welcome back, {session?.user?.name?.split(' ')[0] || 'User'}!
+                    </h1>
+                    <p className="mt-1 text-sm text-gray-500">
+                        Here's what's happening with your tasks today.
+                    </p>
+                </div>
+                <div className="mt-4 sm:mt-0">
+                    <button
+                        type="button"
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                        <PlusIcon className="h-5 w-5 mr-2" /> New Task
+                    </button>
+                </div>
+            </div>
+
+            {/* Stats */}
+            <TaskStats refreshStatsTrigger={taskListKey} />
+
+            {/* Filters */}
+            <TaskFilters
+                filters={filters}
+                onFiltersChange={setFilters}
+                searchInputRef={searchInputRef}
+            />
+
+            {/* Task List */}
+            <TaskList
+                key={taskListKey}
+                filters={filters}
+                onTaskUpdate={refreshTasks}
+            />
+
+            {/* Create Task Modal */}
+            <CreateTaskModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onTaskCreated={() => {
+                    setIsCreateModalOpen(false)
+                    refreshTasks() // Refresh tasks after creating
+                }}
+            />
+        </div>
+    );
+}
+
+export default function Dashboard() {
     return (
         <DashboardLayout>
-            <div className="space-y-6">
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900">
-                            Welcome back, {session?.user?.name?.split(' ')[0] || 'User'}!
-                        </h1>
-                        <p className="mt-1 text-sm text-gray-500">
-                            Here's what's happening with your tasks today.
-                        </p>
-                    </div>
-                    <div className="mt-4 sm:mt-0">
-                        <button
-                            type="button"
-                            onClick={() => setIsCreateModalOpen(true)}
-                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        >
-                            <PlusIcon className="h-5 w-5 mr-2" /> New Task
-                        </button>
-                    </div>
-                </div>
-
-                {/* Stats */}
-                <TaskStats refreshStatsTrigger={taskListKey} />
-
-                {/* Filters */}
-                <TaskFilters
-                    filters={filters}
-                    onFiltersChange={setFilters}
-                    searchInputRef={searchInputRef}
-                />
-
-                {/* Task List */}
-                <TaskList
-                    key={taskListKey}
-                    filters={filters}
-                    onTaskUpdate={refreshTasks}
-                />
-
-                {/* Create Task Modal */}
-                <CreateTaskModal
-                    isOpen={isCreateModalOpen}
-                    onClose={() => setIsCreateModalOpen(false)}
-                    onTaskCreated={() => {
-                        setIsCreateModalOpen(false)
-                        refreshTasks() // Refresh tasks after creating
-                    }}
-                />
-            </div>
+            <Suspense fallback={<DashboardLoading />}>
+                <DashboardContent />
+            </Suspense>
         </DashboardLayout>
-    )
+    );
 }
