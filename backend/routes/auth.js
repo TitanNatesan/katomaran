@@ -40,7 +40,7 @@ router.get('/github', passport.authenticate('github', { scope: ['user:email'] })
 // @desc    GitHub OAuth callback
 // @access  Public
 router.get('/github/callback',
-    passport.authenticate('github', { failureRedirect: '/' }),
+    passport.authenticate('github', { failureRedirect: '/', session: false }),
     (req, res) => {
         const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
         res.redirect(`${process.env.FRONTEND_URL}/dashboard?token=${token}`);

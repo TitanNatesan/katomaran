@@ -22,12 +22,16 @@ module.exports = function (passport) {
                 try {
                     let user = await User.findOne({ githubId: profile.id });
                     if (!user) {
+                        // Ensure email exists, fallback to a placeholder if not available
+                        const email = (profile.emails && profile.emails[0] && profile.emails[0].value)
+                            ? profile.emails[0].value
+                            : `${profile.username || profile.id}@users.noreply.github.com`;
+
                         user = await User.create({
                             githubId: profile.id,
-                            email: profile.emails[0].value,
+                            email: email,
                             username: profile.username,
                             name: profile.displayName || profile.username,
-                            avatar: profile.photos[0].value
                         });
                     }
                     return done(null, user);
