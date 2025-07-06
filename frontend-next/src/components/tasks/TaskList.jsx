@@ -17,7 +17,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { getAuthToken, getAuthHeaders } from '@/utils/authUtils'
 
-export function TaskList({ filters, onTaskUpdate }) {
+export function TaskList({ filters, onTaskUpdate, onTaskDelete }) {
     const { data: session } = useSession()
     const [tasks, setTasks] = useState([])
     const [loading, setLoading] = useState(true)
@@ -26,12 +26,19 @@ export function TaskList({ filters, onTaskUpdate }) {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [taskToDelete, setTaskToDelete] = useState(null)
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+    const [refreshTrigger, setRefreshTrigger] = useState(0)
+
+    // Simple refresh trigger function
+    const triggerRefresh = () => {
+        console.log('Manually refreshing tasks via trigger');
+        setRefreshTrigger(prev => prev + 1);
+    };
 
     // Listen for token storage events
     useEffect(() => {
         const handleTokenStored = () => {
             console.log('Token stored event detected in TaskList');
-            refreshTasks();
+            triggerRefresh();
         };
 
         if (typeof window !== 'undefined') {
@@ -84,11 +91,22 @@ export function TaskList({ filters, onTaskUpdate }) {
             } catch (error) {
                 console.error('Error fetching tasks:', error)
                 if (error.response?.status === 401) {
-                    setError('Authentication failed. Please login again with email/password.')
+                    setError('Authentication failed. Please login again.')
+                    toast.error('Authentication failed. Redirecting to login...');
+                    // If token exists but is invalid, clear it and redirect
+                    if (backendToken) {
+                        // Import and use the clearAuthToken utility
+                        const { clearAuthToken } = require('@/utils/authUtils');
+                        clearAuthToken();
+                        // Redirect after a brief delay to show the toast
+                        setTimeout(() => {
+                            window.location.href = '/login?error=token_expired';
+                        }, 1500);
+                    }
                 } else {
                     setError('Failed to load tasks')
+                    toast.error('Failed to load tasks')
                 }
-                toast.error('Failed to load tasks')
             } finally {
                 setLoading(false)
             }
@@ -97,7 +115,7 @@ export function TaskList({ filters, onTaskUpdate }) {
         if (session?.user || getAuthToken(session)) {
             fetchTasks()
         }
-    }, [session, filters])
+    }, [session, filters, refreshTrigger])
 
     // Refresh tasks function for manual updates
     const refreshTasks = async () => {

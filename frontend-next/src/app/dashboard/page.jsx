@@ -159,14 +159,31 @@ function DashboardContent() {
         setRefreshStatsTrigger(prev => prev + 1)
     }
 
+    // Function to handle token validation issues
+    const handleAuthFailure = () => {
+        console.log('Auth failure detected, redirecting to login');
+        const { clearAuthToken } = require('@/utils/authUtils');
+        clearAuthToken();
+        router.push('/login?error=auth_required');
+        return null;
+    };
+
+    // Ensure we have a token from any source
+    const hasToken = isTokenReady || getAuthToken(session);
+
     // Show loading while checking authentication
-    if (status === 'loading' || (!session && !isTokenReady)) {
+    if (status === 'loading' && !hasToken) {
         return <DashboardLoading />;
     }
 
     // Redirect if not authenticated
-    if (status === 'unauthenticated' && !isTokenReady) {
-        return null // Will redirect to login
+    if (status === 'unauthenticated' && !hasToken) {
+        return handleAuthFailure();
+    }
+
+    // Double-check token validity if we have a token but no session
+    if (!session && hasToken) {
+        console.log('Token found but no session, using token-based auth');
     }
 
     return (

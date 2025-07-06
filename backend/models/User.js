@@ -16,7 +16,8 @@ const userSchema = new mongoose.Schema({
     },
     githubId: {
         type: String,
-        sparse: true
+        sparse: true,
+        index: false // Turn off automatic index since we manually define it below
     },
     username: {
         type: String,

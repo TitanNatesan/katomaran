@@ -37,7 +37,10 @@ export function CreateTaskModal({ isOpen, onClose, onTaskCreated }) {
             const backendToken = getAuthToken(session);
 
             if (!backendToken) {
-                throw new Error('Authentication token is missing');
+                toast.error('Authentication token is missing. Please log in again.');
+                // Force logout for re-authentication
+                window.location.href = '/login?error=token_missing';
+                return;
             }
 
             // Handle sharedWith email
