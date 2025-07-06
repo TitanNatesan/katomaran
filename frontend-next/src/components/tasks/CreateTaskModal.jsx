@@ -33,16 +33,16 @@ export function CreateTaskModal({ isOpen, onClose, onTaskCreated }) {
                 dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : null,
             };
 
+            // Get token using our utility function once at the beginning
+            const backendToken = getAuthToken(session);
+
+            if (!backendToken) {
+                throw new Error('Authentication token is missing');
+            }
+
             // Handle sharedWith email
             if (data.sharedWith && data.sharedWith.trim() !== '') {
                 try {
-                    // Get token using our utility function
-                    const backendToken = getAuthToken(session);
-
-                    if (!backendToken) {
-                        throw new Error('Authentication token is missing');
-                    }
-
                     const userResponse = await axios.get(
                         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/email/${data.sharedWith.trim()}`,
                         {

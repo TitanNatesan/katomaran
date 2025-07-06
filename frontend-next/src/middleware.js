@@ -21,9 +21,15 @@ export default withAuth(
     {
         callbacks: {
             authorized: ({ token, req }) => {
-                // Allow access if user has token or if there's a token in URL
+                // 1. Check for token in URL (GitHub OAuth redirect)
                 const urlToken = req.nextUrl.searchParams.get('token')
-                return !!token || !!urlToken
+                if (urlToken) return true
+
+                // 2. Check for Next-Auth session token
+                if (token) return true
+
+                // If we get here, not authorized
+                return false
             },
         },
     }

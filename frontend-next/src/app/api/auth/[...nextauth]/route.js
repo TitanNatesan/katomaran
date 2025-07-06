@@ -74,10 +74,30 @@ export const authOptions = {
 
                     // Send user data to backend for authentication (OAuth only)
                     if (backendEndpoint) {
-                        const response = await axios.post(backendEndpoint, requestData)
-                        if (response.data.success) {
-                            token.backendToken = response.data.token
-                            token.user = response.data.user
+                        try {
+                            console.log('Sending OAuth data to backend:', backendEndpoint);
+                            const response = await axios.post(backendEndpoint, requestData);
+
+                            if (response.data.success && response.data.token) {
+                                console.log('Received token from backend OAuth endpoint');
+                                token.backendToken = response.data.token;
+                                token.user = response.data.user || {
+                                    email: user.email,
+                                    name: user.name,
+                                    image: user.image
+                                };
+
+                                // Ensure token is also stored in localStorage (for client-side)
+                                if (typeof window !== 'undefined') {
+                                    localStorage.setItem('backendToken', response.data.token);
+                                    console.log('Token stored in localStorage from NextAuth');
+                                }
+                            } else {
+                                console.error('Backend OAuth request succeeded but no token returned');
+                            }
+                        } catch (oauthError) {
+                            console.error('OAuth backend authentication error:', oauthError);
+                            throw oauthError; // Re-throw to be handled by the outer try/catch
                         }
                     }
                 } catch (error) {
@@ -100,11 +120,19 @@ export const authOptions = {
             // Add the backend token to the session if it exists
             if (token.backendToken) {
                 session.backendToken = token.backendToken;
-            } else if (typeof localStorage !== 'undefined') {
-                // Try to get token from localStorage as fallback for OAuth flows
-                const storedToken = localStorage.getItem('backendToken');
-                if (storedToken) {
-                    session.backendToken = storedToken;
+                console.log('Adding backend token to session from JWT token');
+            } else {
+                // Try to get token from localStorage as fallback
+                try {
+                    if (typeof window !== 'undefined') {
+                        const storedToken = localStorage.getItem('backendToken');
+                        if (storedToken) {
+                            console.log('Retrieved token from localStorage for session');
+                            session.backendToken = storedToken;
+                        }
+                    }
+                } catch (storageError) {
+                    console.error('Error accessing localStorage:', storageError);
                 }
             }
 

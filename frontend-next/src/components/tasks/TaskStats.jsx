@@ -23,14 +23,52 @@ export function TaskStats({ refreshStatsTrigger }) {
     })
     const [loading, setLoading] = useState(true)
 
+    // Listen for token storage events
+    useEffect(() => {
+        const handleTokenStored = () => {
+            console.log('Token stored event detected in TaskStats');
+            // Force refresh when token is stored
+            setStats(prevStats => ({ ...prevStats }));
+        };
+
+        if (typeof window !== 'undefined') {
+            window.addEventListener('tokenStored', handleTokenStored);
+
+            return () => {
+                window.removeEventListener('tokenStored', handleTokenStored);
+            };
+        }
+    }, []);
+
     useEffect(() => {
         const fetchStats = async () => {
             // Get token using our utility function
             const backendToken = getAuthToken(session);
+            console.log('TaskStats - Token status:', !!backendToken);
 
-            if (!backendToken) return;
+            if (!backendToken) {
+                console.log('No token available for TaskStats');
+                // Reset stats when no token is available
+                setStats({
+                    total: 0,
+                    pending: 0,
+                    inProgress: 0,
+                    completed: 0,
+                    overdue: 0
+                });
+                setLoading(false);
+                return;
+            }
+
+            // Validate token format
+            if (typeof backendToken !== 'string' || backendToken.trim() === '') {
+                console.error('Invalid token format in TaskStats');
+                setLoading(false);
+                return;
+            }
 
             try {
+                console.log('TaskStats fetching data with token');
                 const response = await axios.get(
                     `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks`,
                     {
@@ -62,7 +100,7 @@ export function TaskStats({ refreshStatsTrigger }) {
         }
 
         fetchStats()
-    }, [session?.backendToken, refreshStatsTrigger])
+    }, [session, refreshStatsTrigger])
 
     if (loading) {
         return (

@@ -27,6 +27,22 @@ export function TaskList({ filters, onTaskUpdate }) {
     const [taskToDelete, setTaskToDelete] = useState(null)
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
+    // Listen for token storage events
+    useEffect(() => {
+        const handleTokenStored = () => {
+            console.log('Token stored event detected in TaskList');
+            refreshTasks();
+        };
+
+        if (typeof window !== 'undefined') {
+            window.addEventListener('tokenStored', handleTokenStored);
+
+            return () => {
+                window.removeEventListener('tokenStored', handleTokenStored);
+            };
+        }
+    }, []);
+
     // Fetch tasks from backend
     useEffect(() => {
         const fetchTasks = async () => {
@@ -35,12 +51,26 @@ export function TaskList({ filters, onTaskUpdate }) {
 
                 // Get token using our utility function
                 const backendToken = getAuthToken(session);
+                console.log('TaskList - Token status:', !!backendToken);
 
                 if (!backendToken) {
-                    setError('Backend authentication required. Please use email/password login for full functionality.')
-                    setLoading(false)
-                    return
+                    console.error('No backend token available for task fetch');
+                    setError('Authentication required. Please try logging in again.');
+                    setLoading(false);
+                    setTasks([]);
+                    return;
                 }
+
+                // Ensure we have a valid token format before making the request
+                if (typeof backendToken !== 'string' || backendToken.trim() === '') {
+                    console.error('Invalid token format');
+                    setError('Invalid authentication token. Please log in again.');
+                    setLoading(false);
+                    setTasks([]);
+                    return;
+                }
+
+                console.log(`Making request to ${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks with token`);
 
                 const response = await axios.get(
                     `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks`,
@@ -64,20 +94,26 @@ export function TaskList({ filters, onTaskUpdate }) {
             }
         }
 
-        if (session?.user) {
+        if (session?.user || getAuthToken(session)) {
             fetchTasks()
         }
-    }, [session])
+    }, [session, filters])
 
     // Refresh tasks function for manual updates
     const refreshTasks = async () => {
         try {
+            // Get token using our utility function
+            const backendToken = getAuthToken(session);
+
+            if (!backendToken) {
+                console.error('No authentication token available');
+                return;
+            }
+
             const response = await axios.get(
                 `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks`,
                 {
-                    headers: {
-                        Authorization: `Bearer ${session?.backendToken}`,
-                    },
+                    headers: getAuthHeaders(backendToken)
                 }
             )
             setTasks(response.data.tasks || [])

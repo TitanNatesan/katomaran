@@ -35,24 +35,44 @@ function DashboardContent() {
         search: '',
         dueDate: 'all'
     })
-    const searchInputRef = useRef(null)
-
-    // Enhanced token handling from URL parameters
+    const searchInputRef = useRef(null)    // Enhanced token handling from URL parameters
     useEffect(() => {
         const token = searchParams.get('token')
         if (token) {
-            console.log('OAuth token found in URL, storing...')
-            storeAuthToken(token)
-            setIsTokenReady(true)
+            console.log('OAuth token found in URL, storing...', token.substring(0, 10) + '...');
+            storeAuthToken(token);
+            setIsTokenReady(true);
 
             // Clean URL without losing the token
-            const newUrl = window.location.pathname
-            window.history.replaceState({}, '', newUrl)
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+
+            // Force a refresh of components after token is stored
+            setTimeout(() => {
+                setRefreshStatsTrigger(prev => prev + 1);
+
+                // Force re-fetch session to include the token
+                const event = new Event('visibilitychange');
+                document.dispatchEvent(event);
+            }, 500);
         } else {
             // Check if token exists in storage
-            const existingToken = getAuthToken(session)
+            const existingToken = getAuthToken(session);
             if (existingToken) {
-                setIsTokenReady(true)
+                console.log('Existing token found in storage or session');
+                setIsTokenReady(true);
+
+                // Ensure token is synced with the session
+                if (session && !session.backendToken && typeof window !== 'undefined') {
+                    console.log('Token found in storage but not in session, triggering refresh');
+                    const event = new Event('visibilitychange');
+                    document.dispatchEvent(event);
+                }
+            } else if (session?.backendToken) {
+                console.log('Token found in session');
+                // Save the session token to localStorage for redundancy
+                storeAuthToken(session.backendToken);
+                setIsTokenReady(true);
             }
         }
     }, [searchParams, session])
@@ -76,25 +96,38 @@ function DashboardContent() {
                 window.removeEventListener('tokenCleared', handleTokenCleared)
             }
         }
-    }, [])
-
-    // Enhanced authentication check
+    }, [])    // Enhanced authentication check
     useEffect(() => {
         if (status === 'loading') return // Wait for session to load
 
-        if (status === 'unauthenticated' && !isTokenReady) {
-            console.log('User not authenticated, redirecting to login')
-            router.push('/login')
-            return
+        const token = getAuthToken(session);
+        console.log('Authentication check:', {
+            status,
+            hasSession: !!session,
+            hasToken: !!token,
+            isTokenReady
+        });
+
+        if (status === 'unauthenticated' && !isTokenReady && !token) {
+            console.log('User not authenticated, redirecting to login');
+            router.push('/login');
+            return;
         }
 
         // Check if we have either session or stored token
-        if (status === 'authenticated' || isTokenReady) {
+        if (status === 'authenticated' || isTokenReady || token) {
             console.log('Authentication confirmed', {
                 session: !!session,
-                token: !!getAuthToken(session),
+                hasToken: !!token,
                 tokenReady: isTokenReady
-            })
+            });
+
+            // If we have a token but session doesn't, sync them
+            if (token && session && !session.backendToken) {
+                console.log('Token exists but not in session, refreshing session');
+                const event = new Event('visibilitychange');
+                document.dispatchEvent(event);
+            }
         }
     }, [status, session, isTokenReady, router])
 
