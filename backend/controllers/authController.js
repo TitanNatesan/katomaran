@@ -1,11 +1,8 @@
 const { validationResult } = require('express-validator');
 const User = require('../models/User');
 const { generateToken } = require('../utils/jwt');
-const { OAuth2Client } = require('google-auth-library');
 const axios = require('axios');
 const logger = require('../config/logger');
-
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // @desc    Register user
 // @route   POST /api/auth/register
@@ -100,69 +97,6 @@ const login = async (req, res, next) => {
             }
         });
     } catch (error) {
-        next(error);
-    }
-};
-
-// @desc    Google OAuth login
-// @route   POST /api/auth/google
-// @access  Public
-const googleAuth = async (req, res, next) => {
-    try {
-        const { idToken } = req.body;
-
-        console.log('Google Auth Request:', req.body);
-
-        if (!idToken) {
-            return res.status(400).json({ message: 'Google ID token is required' });
-        }
-
-        // Verify Google token
-        const ticket = await client.verifyIdToken({
-            idToken,
-            audience: process.env.GOOGLE_CLIENT_ID
-        });
-
-        const payload = ticket.getPayload();
-        const { sub: googleId, email, name, picture } = payload;
-
-        // Check if user exists
-        let user = await User.findOne({ $or: [{ googleId }, { email }] });
-
-        if (user) {
-            // Update Google ID if user exists but doesn't have it
-            if (!user.googleId) {
-                user.googleId = googleId;
-                await user.save();
-            }
-        } else {
-            // Create new user
-            user = new User({
-                email,
-                googleId,
-                name,
-                avatar: picture
-            });
-            await user.save();
-        }
-
-        // Generate token
-        const token = generateToken(user._id);
-
-        winston.info(`Google OAuth login: ${email}`);
-
-        res.json({
-            success: true,
-            token,
-            user: {
-                id: user._id,
-                email: user.email,
-                name: user.name,
-                avatar: user.avatar
-            }
-        });
-    } catch (error) {
-        winston.error(`Google OAuth error: ${error.message}`);
         next(error);
     }
 };
@@ -286,7 +220,6 @@ const getMe = async (req, res, next) => {
 module.exports = {
     register,
     login,
-    googleAuth,
     githubAuth,
     getMe
 };

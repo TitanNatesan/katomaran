@@ -11,11 +11,8 @@ const userSchema = new mongoose.Schema({
     password: {
         type: String,
         required: function () {
-            return !this.googleId && !this.githubId;
+            return !this.githubId;
         }
-    },
-    googleId: {
-        type: String
     },
     githubId: {
         type: String,
@@ -30,7 +27,7 @@ const userSchema = new mongoose.Schema({
         type: String,
         trim: true,
         required: function () {
-            return !this.googleId && !this.githubId;
+            return !this.githubId;
         }
     },
     avatar: {
@@ -62,7 +59,6 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
 
 // Create indices for better performance
 userSchema.index({ email: 1 }, { unique: true });
-userSchema.index({ googleId: 1 }, { unique: true, sparse: true });
 userSchema.index({ githubId: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('User', userSchema);

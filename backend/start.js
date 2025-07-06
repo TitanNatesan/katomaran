@@ -15,9 +15,7 @@ const requiredVars = [
 const optionalVars = [
     'FRONTEND_URL',
     'GITHUB_CLIENT_ID',
-    'GITHUB_CLIENT_SECRET',
-    'GOOGLE_CLIENT_ID',
-    'GOOGLE_CLIENT_SECRET'
+    'GITHUB_CLIENT_SECRET'
 ];
 
 console.log('\n✅ Required Variables:');
@@ -47,12 +45,7 @@ const githubConfigured = process.env.GITHUB_CLIENT_ID &&
     process.env.GITHUB_CLIENT_SECRET &&
     process.env.GITHUB_CLIENT_ID !== 'your_github_client_id_here';
 
-const googleConfigured = process.env.GOOGLE_CLIENT_ID &&
-    process.env.GOOGLE_CLIENT_SECRET &&
-    process.env.GOOGLE_CLIENT_ID !== 'your_google_client_id_here';
-
 console.log(`   GitHub OAuth: ${githubConfigured ? '✅ Configured' : '❌ Not configured'}`);
-console.log(`   Google OAuth: ${googleConfigured ? '✅ Configured' : '❌ Not configured'}`);
 
 if (!allRequiredSet) {
     console.log('\n❌ CRITICAL: Missing required environment variables!');

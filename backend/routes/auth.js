@@ -45,56 +45,6 @@ router.get('/github/callback',
     }
 );
 
-// @route   GET /api/auth/google
-// @desc    Google OAuth login
-// @access  Public
-router.get('/google', (req, res, next) => {
-    // Check if Google OAuth is configured
-    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET ||
-        process.env.GOOGLE_CLIENT_ID === 'your_google_client_id_here' ||
-        process.env.GOOGLE_CLIENT_SECRET === 'your_google_client_secret_here') {
-        return res.status(503).json({
-            success: false,
-            message: 'Google OAuth is not configured on this server'
-        });
-    }
-    passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
-});
-
-// @route   GET /api/auth/google/callback
-// @desc    Google OAuth callback
-// @access  Public
-router.get('/google/callback', (req, res, next) => {
-    // Check if Google OAuth is configured
-    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET ||
-        process.env.GOOGLE_CLIENT_ID === 'your_google_client_id_here' ||
-        process.env.GOOGLE_CLIENT_SECRET === 'your_google_client_secret_here') {
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-        return res.redirect(`${frontendUrl}/auth/callback?error=google_not_configured`);
-    }
-    passport.authenticate('google', { session: false })(req, res, next);
-}, async (req, res) => {
-    try {
-        const user = req.user;
-
-        // Generate JWT token using userId, not just id
-        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-
-        // Log successful authentication
-        logger.info('Google OAuth successful', {
-            userId: user._id,
-            email: user.email
-        });
-
-        // Redirect to frontend with token
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        res.redirect(`${frontendUrl}/dashboard?token=${token}`);
-    } catch (error) {
-        logger.error('Google OAuth callback error', { error: error.message });
-        res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed`);
-    }
-});
-
 // @route   GET /api/auth/me
 // @desc    Get current user
 // @access  Private

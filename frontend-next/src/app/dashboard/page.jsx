@@ -62,16 +62,6 @@ function DashboardContent() {
     }
 
     useEffect(() => {
-        const token = searchParams.get('token')
-        if (token) {
-            storeAuthToken(token)
-            router.replace('/dashboard') // Clean URL
-        } else if (!localStorage.getItem('token')) {
-            router.push('/login')
-        }
-    }, [searchParams, router])
-
-    useEffect(() => {
         if (status === 'unauthenticated') {
             router.push('/login')
         }
@@ -79,31 +69,13 @@ function DashboardContent() {
 
     // Handle token from URL (for OAuth redirects)
     useEffect(() => {
-        // Check if we're in the browser environment
-        if (typeof window !== 'undefined') {
-            // Get token from URL search params
-            const params = new URLSearchParams(window.location.search);
-            const token = params.get('token');
-
-            if (token) {
-                console.log('Token found in URL, storing in localStorage');
-                localStorage.setItem('backendToken', token);
-                // Clean URL by removing the token parameter
-                router.replace('/dashboard');
-            }
-        }
-    }, [router]);
-
-    // Handle token from URL (from OAuth callback)
-    useEffect(() => {
-        const token = searchParams.get('token');
+        const token = searchParams.get('token')
         if (token) {
-            storeAuthToken(token);
-            // Clean up URL by removing the token parameter
-            const newUrl = window.location.pathname;
-            router.replace(newUrl);
+            console.log('Token found in URL, storing in localStorage')
+            storeAuthToken(token)
+            router.replace('/dashboard') // Clean URL
         }
-    }, [searchParams, router]);
+    }, [searchParams, router])
 
     if (status === 'loading') {
         return <DashboardLoading />;

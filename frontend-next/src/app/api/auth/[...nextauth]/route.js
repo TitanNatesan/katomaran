@@ -1,15 +1,10 @@
 import NextAuth from 'next-auth'
-import GoogleProvider from 'next-auth/providers/google'
 import GitHubProvider from 'next-auth/providers/github'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import axios from 'axios'
 
 export const authOptions = {
     providers: [
-        GoogleProvider({
-            clientId: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        }),
         GitHubProvider({
             clientId: process.env.GITHUB_CLIENT_ID,
             clientSecret: process.env.GITHUB_CLIENT_SECRET,
@@ -55,17 +50,7 @@ export const authOptions = {
                     let requestData = {}
 
                     // Handle different OAuth providers
-                    if (account.provider === 'google') {
-                        backendEndpoint = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/google`
-                        requestData = {
-                            token: account.id_token,
-                            user: {
-                                email: user.email,
-                                name: user.name,
-                                image: user.image
-                            }
-                        }
-                    } else if (account.provider === 'github') {
+                    if (account.provider === 'github') {
                         backendEndpoint = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/github`
                         requestData = {
                             accessToken: account.access_token,
