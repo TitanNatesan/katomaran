@@ -10,7 +10,7 @@ import { TaskStats } from '@/components/tasks/TaskStats'
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
 import { useKeyboardShortcuts } from '@/components/common/KeyboardShortcuts'
 import { PlusIcon } from '@heroicons/react/24/outline'
-import { storeAuthToken } from '@/utils/authUtils'
+import { storeAuthToken, getAuthToken, isAuthenticated } from '@/utils/authUtils'
 
 // Loading component for Suspense fallback
 function DashboardLoading() {
@@ -27,7 +27,8 @@ function DashboardContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-    const [taskListKey, setTaskListKey] = useState(0) // For forcing re-render
+    const [refreshStatsTrigger, setRefreshStatsTrigger] = useState(0) // For TaskStats refresh
+    const [isTokenReady, setIsTokenReady] = useState(false)
     const [filters, setFilters] = useState({
         status: 'all',
         priority: 'all',
@@ -36,16 +37,80 @@ function DashboardContent() {
     })
     const searchInputRef = useRef(null)
 
-    // Debug session
+    // Enhanced token handling from URL parameters
     useEffect(() => {
-        if (session) {
-            console.log('Dashboard Session:', {
-                user: session.user,
-                backendToken: session.backendToken ? 'Present' : 'Missing',
-                tokenLength: session.backendToken?.length || 0
+        const token = searchParams.get('token')
+        if (token) {
+            console.log('OAuth token found in URL, storing...')
+            storeAuthToken(token)
+            setIsTokenReady(true)
+
+            // Clean URL without losing the token
+            const newUrl = window.location.pathname
+            window.history.replaceState({}, '', newUrl)
+        } else {
+            // Check if token exists in storage
+            const existingToken = getAuthToken(session)
+            if (existingToken) {
+                setIsTokenReady(true)
+            }
+        }
+    }, [searchParams, session])
+
+    // Listen for token storage events
+    useEffect(() => {
+        const handleTokenStored = () => {
+            setIsTokenReady(true)
+        }
+
+        const handleTokenCleared = () => {
+            setIsTokenReady(false)
+        }
+
+        if (typeof window !== 'undefined') {
+            window.addEventListener('tokenStored', handleTokenStored)
+            window.addEventListener('tokenCleared', handleTokenCleared)
+
+            return () => {
+                window.removeEventListener('tokenStored', handleTokenStored)
+                window.removeEventListener('tokenCleared', handleTokenCleared)
+            }
+        }
+    }, [])
+
+    // Enhanced authentication check
+    useEffect(() => {
+        if (status === 'loading') return // Wait for session to load
+
+        if (status === 'unauthenticated' && !isTokenReady) {
+            console.log('User not authenticated, redirecting to login')
+            router.push('/login')
+            return
+        }
+
+        // Check if we have either session or stored token
+        if (status === 'authenticated' || isTokenReady) {
+            console.log('Authentication confirmed', {
+                session: !!session,
+                token: !!getAuthToken(session),
+                tokenReady: isTokenReady
             })
         }
-    }, [session])
+    }, [status, session, isTokenReady, router])
+
+    // Debug logging
+    useEffect(() => {
+        if (session || isTokenReady) {
+            console.log('Dashboard Auth State:', {
+                sessionStatus: status,
+                hasSession: !!session,
+                sessionUser: session?.user?.email,
+                hasBackendToken: !!session?.backendToken,
+                hasStoredToken: !!getAuthToken(session),
+                isTokenReady
+            })
+        }
+    }, [session, status, isTokenReady])
 
     useKeyboardShortcuts({
         onNewTask: () => setIsCreateModalOpen(true),
@@ -56,32 +121,18 @@ function DashboardContent() {
         }
     })
 
-    // Function to refresh task list
+    // Function to refresh task list and stats
     const refreshTasks = () => {
-        setTaskListKey(prev => prev + 1)
+        setRefreshStatsTrigger(prev => prev + 1)
     }
 
-    useEffect(() => {
-        if (status === 'unauthenticated') {
-            router.push('/login')
-        }
-    }, [status, router])
-
-    // Handle token from URL (for OAuth redirects)
-    useEffect(() => {
-        const token = searchParams.get('token')
-        if (token) {
-            console.log('Token found in URL, storing in localStorage')
-            storeAuthToken(token)
-            router.replace('/dashboard') // Clean URL
-        }
-    }, [searchParams, router])
-
-    if (status === 'loading') {
+    // Show loading while checking authentication
+    if (status === 'loading' || (!session && !isTokenReady)) {
         return <DashboardLoading />;
     }
 
-    if (status === 'unauthenticated') {
+    // Redirect if not authenticated
+    if (status === 'unauthenticated' && !isTokenReady) {
         return null // Will redirect to login
     }
 
@@ -109,7 +160,7 @@ function DashboardContent() {
             </div>
 
             {/* Stats */}
-            <TaskStats refreshStatsTrigger={taskListKey} />
+            <TaskStats refreshStatsTrigger={refreshStatsTrigger} />
 
             {/* Filters */}
             <TaskFilters
@@ -120,19 +171,16 @@ function DashboardContent() {
 
             {/* Task List */}
             <TaskList
-                key={taskListKey}
                 filters={filters}
                 onTaskUpdate={refreshTasks}
+                onTaskDelete={refreshTasks}
             />
 
             {/* Create Task Modal */}
             <CreateTaskModal
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
-                onTaskCreated={() => {
-                    setIsCreateModalOpen(false)
-                    refreshTasks() // Refresh tasks after creating
-                }}
+                onTaskCreated={refreshTasks}
             />
         </div>
     );

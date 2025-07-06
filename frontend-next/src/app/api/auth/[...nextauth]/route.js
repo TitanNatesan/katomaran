@@ -75,8 +75,10 @@ export const authOptions = {
                     // Send user data to backend for authentication (OAuth only)
                     if (backendEndpoint) {
                         const response = await axios.post(backendEndpoint, requestData)
-                        token.backendToken = response.data.token
-                        token.user = response.data.user
+                        if (response.data.success) {
+                            token.backendToken = response.data.token
+                            token.user = response.data.user
+                        }
                     }
                 } catch (error) {
                     console.error('Backend authentication error:', error)
@@ -109,7 +111,16 @@ export const authOptions = {
             return session;
         },
         async redirect({ url, baseUrl }) {
-            return url.startsWith(baseUrl) ? url : baseUrl + '/dashboard'
+            // Enhanced redirect logic for OAuth flows
+            if (url.startsWith('/api/auth/signin')) {
+                return baseUrl + '/dashboard'
+            }
+
+            if (url.startsWith(baseUrl)) {
+                return url
+            }
+
+            return baseUrl + '/dashboard'
         }
     },
     pages: {

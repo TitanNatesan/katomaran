@@ -37,15 +37,35 @@ router.get('/github', passport.authenticate('github', { scope: ['user:email'] })
 // @access  Public
 router.get('/github/callback',
     passport.authenticate('github', { failureRedirect: '/', session: false }),
-    (req, res) => {
+    async (req, res) => {
         try {
-            // Generate JWT token using userId, not just id
-            const token = jwt.sign({ userId: req.user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-            logger.info('GitHub OAuth successful', { userId: req.user._id });
-            res.redirect(`${process.env.FRONTEND_URL}/dashboard?token=${token}`);
+            if (!req.user) {
+                logger.error('GitHub OAuth callback: No user found')
+                return res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`)
+            }
+
+            // Generate JWT token with proper payload
+            const token = jwt.sign(
+                {
+                    userId: req.user._id,
+                    email: req.user.email,
+                    provider: 'github'
+                },
+                process.env.JWT_SECRET,
+                { expiresIn: '24h' }
+            )
+
+            logger.info('GitHub OAuth successful', {
+                userId: req.user._id,
+                email: req.user.email
+            })
+
+            // Redirect to dashboard with token
+            const redirectUrl = `${process.env.FRONTEND_URL}/dashboard?token=${token}`
+            res.redirect(redirectUrl)
         } catch (err) {
-            logger.error('GitHub callback error', { error: err.message });
-            res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
+            logger.error('GitHub callback error', { error: err.message })
+            res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`)
         }
     }
 );
