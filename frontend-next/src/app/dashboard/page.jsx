@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState, useRef, Suspense } from 'react'
+import { useEffect, useState, useRef, Suspense, useCallback } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { TaskList } from '@/components/tasks/TaskList'
 import { TaskFilters } from '@/components/tasks/TaskFilters'
@@ -35,7 +35,56 @@ function DashboardContent() {
         search: '',
         dueDate: 'all'
     })
-    const searchInputRef = useRef(null)    // Enhanced token handling from URL parameters
+    const searchInputRef = useRef(null)
+
+    // Create a shared logout handler that can be passed to components
+    const handleLogout = useCallback(async () => {
+        console.log('Dashboard: Starting complete logout process');
+
+        try {
+            // 1. Clear all token storage first
+            const { clearAuthToken } = await import('@/utils/authUtils');
+            clearAuthToken();
+
+            // 2. Set local state
+            setIsTokenReady(false);
+
+            // 3. Force clear cookies with server-side help
+            // This fetch will hit our API route that clears cookies
+            try {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                console.log('Called server-side logout endpoint');
+            } catch (error) {
+                console.error('Error calling logout endpoint:', error);
+            }
+
+            // 4. Wait a moment to ensure tokens are cleared
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            // 5. Redirect to login page
+            router.push('/login?logout=success');
+        } catch (error) {
+            console.error('Error during logout:', error);
+            router.push('/login?error=logout_failed');
+        }
+    }, [router]);
+
+    // Share the logout handler with the DashboardLayout
+    useEffect(() => {
+        // Add the handler to window so DashboardLayout can access it
+        if (typeof window !== 'undefined') {
+            window.handleKatomaranLogout = handleLogout;
+        }
+
+        return () => {
+            // Clean up when unmounting
+            if (typeof window !== 'undefined') {
+                delete window.handleKatomaranLogout;
+            }
+        };
+    }, [handleLogout]);
+
+    // Enhanced token handling from URL parameters
     useEffect(() => {
         const token = searchParams.get('token')
         if (token) {

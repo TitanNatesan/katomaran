@@ -30,7 +30,53 @@ export function DashboardLayout({ children }) {
     const router = useRouter()
 
     const handleSignOut = async () => {
-        await signOut({ callbackUrl: '/login' })
+        try {
+            console.log('Starting logout process...');
+
+            // 1. Import the clearAuthToken function to clean client-side storage
+            const { clearAuthToken } = await import('@/utils/authUtils');
+
+            // 2. Clear all client-side tokens and storage first
+            clearAuthToken();
+
+            // 3. Call the backend logout API to clear server-side session and cookies
+            try {
+                const response = await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include' // Important to include cookies
+                });
+
+                if (!response.ok) {
+                    console.warn('Backend logout endpoint returned non-OK status:', response.status);
+                }
+            } catch (apiError) {
+                console.error('Error calling logout endpoint:', apiError);
+                // Continue with signOut even if this fails
+            }
+
+            // 4. Finally use NextAuth signOut as the last step
+            // The callbackUrl ensures we redirect to login page after signOut completes
+            console.log('Calling NextAuth signOut...');
+            await signOut({
+                callbackUrl: '/login?logout=success',
+                redirect: true
+            });
+
+            // 5. If for some reason the redirect doesn't happen, force it
+            setTimeout(() => {
+                console.log('Fallback redirect timer triggered');
+                window.location.href = '/login?logout=timeout';
+            }, 1000);
+
+        } catch (error) {
+            console.error('Error during sign out:', error);
+
+            // Force redirect to login on error
+            window.location.href = '/login?error=logout_failed';
+        }
     }
 
     return (

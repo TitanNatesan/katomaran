@@ -121,19 +121,6 @@ export const authOptions = {
             if (token.backendToken) {
                 session.backendToken = token.backendToken;
                 console.log('Adding backend token to session from JWT token');
-            } else {
-                // Try to get token from localStorage as fallback
-                try {
-                    if (typeof window !== 'undefined') {
-                        const storedToken = localStorage.getItem('backendToken');
-                        if (storedToken) {
-                            console.log('Retrieved token from localStorage for session');
-                            session.backendToken = storedToken;
-                        }
-                    }
-                } catch (storageError) {
-                    console.error('Error accessing localStorage:', storageError);
-                }
             }
 
             return session;
@@ -149,6 +136,19 @@ export const authOptions = {
             }
 
             return baseUrl + '/dashboard'
+        },
+        async signOut() {
+            try {
+                console.log('NextAuth signOut callback triggered');
+
+                // We'll perform thorough cleanup on the client side
+                // in the handleSignOut function
+
+                return { success: true, message: 'Logged out successfully' };
+            } catch (error) {
+                console.error('Error in signOut callback:', error);
+                return { success: false, message: 'Error during logout' };
+            }
         }
     },
     pages: {

@@ -101,14 +101,90 @@ export const storeAuthToken = (token) => {
 export const clearAuthToken = () => {
     if (typeof window !== 'undefined') {
         try {
-            // Clear from all storage locations
-            localStorage.removeItem(TOKEN_KEY);
-            sessionStorage.removeItem(TOKEN_KEY);
+            console.log('Clearing all auth tokens and session data');
 
-            // Clear the cookie
-            document.cookie = `${TOKEN_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+            // 1. Clear from localStorage
+            const localStorageKeys = [
+                // Backend token
+                TOKEN_KEY,
+                // NextAuth related
+                'next-auth.session-token',
+                'next-auth.callback-url',
+                'next-auth.csrf-token',
+                // Additional keys that might be used
+                '__Secure-next-auth.session-token',
+                '__Host-next-auth.csrf-token',
+                'next-auth.state',
+                // Legacy keys
+                'token',
+                'auth',
+                'user'
+            ];
 
-            console.log('Auth tokens cleared from all locations');
+            localStorageKeys.forEach(key => {
+                try {
+                    localStorage.removeItem(key);
+                } catch (e) {
+                    console.warn(`Failed to remove ${key} from localStorage:`, e);
+                }
+            });
+
+            // 2. Clear from sessionStorage
+            const sessionStorageKeys = [
+                // Backend token
+                TOKEN_KEY,
+                // NextAuth related
+                'next-auth.session-token',
+                'next-auth.callback-url',
+                'next-auth.csrf-token',
+                // Additional keys that might be used
+                '__Secure-next-auth.session-token',
+                '__Host-next-auth.csrf-token',
+                'next-auth.state',
+                // Legacy keys
+                'token',
+                'auth',
+                'user'
+            ];
+
+            sessionStorageKeys.forEach(key => {
+                try {
+                    sessionStorage.removeItem(key);
+                } catch (e) {
+                    console.warn(`Failed to remove ${key} from sessionStorage:`, e);
+                }
+            });
+
+            // 3. Clear all cookies
+            const cookieKeys = [
+                // Backend token
+                TOKEN_KEY,
+                // NextAuth related
+                'next-auth.session-token',
+                'next-auth.callback-url',
+                'next-auth.csrf-token',
+                // Additional keys that might be used
+                '__Secure-next-auth.session-token',
+                '__Host-next-auth.csrf-token',
+                'next-auth.pkce.code_verifier',
+                'next-auth.state'
+            ];
+
+            cookieKeys.forEach(key => {
+                try {
+                    // Clear the cookie with different path options to ensure complete removal
+                    document.cookie = `${key}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+                    document.cookie = `${key}=; path=/; domain=${window.location.hostname}; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+                    // Also try with secure flag for HTTPS
+                    if (window.location.protocol === 'https:') {
+                        document.cookie = `${key}=; path=/; domain=${window.location.hostname}; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure`;
+                    }
+                } catch (e) {
+                    console.warn(`Failed to remove ${key} cookie:`, e);
+                }
+            });
+
+            console.log('All auth tokens and session data cleared');
 
             // Trigger custom event for token clearing
             window.dispatchEvent(new CustomEvent('tokenCleared'));
