@@ -1,5 +1,4 @@
 const express = require('express');
-const http = require('http');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const winston = require('winston');
@@ -19,13 +18,10 @@ const { generalLimiter } = require('./middleware/rateLimiter');
 // Import routes
 const authRoutes = require('./routes/auth');
 const taskRoutes = require('./routes/tasks');
-
-// Import socket handler
-const initializeSocket = require('./socket/socketHandler');
+const userRoutes = require('./routes/userRoutes'); // Import userRoutes
 
 // Initialize Express app
 const app = express();
-const server = http.createServer(app);
 
 // Connect to database
 connectDB();
@@ -37,15 +33,6 @@ app.set('trust proxy', 1);
 require('./config/passportConfig')(passport);
 app.use(passport.initialize());
 
-// Initialize Socket.io
-const io = initializeSocket(server);
-
-// Make io accessible to our routes
-app.use((req, res, next) => {
-    req.io = io;
-    next();
-});
-
 // CORS configuration
 const corsOptions = {
     origin: [
@@ -55,7 +42,7 @@ const corsOptions = {
         'http://localhost:5173',
         'http://localhost:3000'
     ],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     credentials: true,
     optionsSuccessStatus: 200
 };
@@ -81,6 +68,7 @@ app.get('/api/health', (req, res) => {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api/users', userRoutes); // Register userRoutes
 
 // Handle 404 errors
 app.use('*', (req, res) => {
@@ -97,7 +85,7 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 if (process.env.NODE_ENV !== 'test') {
-    server.listen(PORT, () => {
+    app.listen(PORT, () => {
         logger.info(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
     });
 }
@@ -105,10 +93,7 @@ if (process.env.NODE_ENV !== 'test') {
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err, promise) => {
     logger.error(`Unhandled Rejection: ${err.message}`);
-    // Close server & exit process
-    server.close(() => {
-        process.exit(1);
-    });
+    process.exit(1);
 });
 
 // Handle uncaught exceptions

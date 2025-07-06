@@ -6,7 +6,8 @@ const {
     createTask,
     updateTask,
     deleteTask,
-    shareTask
+    shareTask,
+    patchTask
 } = require('../controllers/taskController');
 const {
     createTaskValidation,
@@ -37,6 +38,11 @@ router.get('/:id', getTask);
 // @desc    Update task
 // @access  Private
 router.put('/:id', updateTaskValidation, updateTask);
+
+// @route   PATCH /api/tasks/:id
+// @desc    Partially update task (e.g., status only)
+// @access  Private
+router.patch('/:id', patchTask);
 
 // @route   DELETE /api/tasks/:id
 // @desc    Delete task

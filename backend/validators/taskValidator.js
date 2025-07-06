@@ -22,7 +22,7 @@ const createTaskValidation = [
         .withMessage('Priority must be low, medium, or high'),
     body('status')
         .optional()
-        .isIn(['pending', 'in progress', 'completed'])
+        .isIn(['pending', 'in progress', 'in_progress', 'completed'])
         .withMessage('Status must be pending, in progress, or completed'),
     body('sharedWith')
         .optional()
@@ -59,7 +59,7 @@ const updateTaskValidation = [
         .withMessage('Priority must be low, medium, or high'),
     body('status')
         .optional()
-        .isIn(['pending', 'in progress', 'completed'])
+        .isIn(['pending', 'in progress', 'in_progress', 'completed'])
         .withMessage('Status must be pending, in progress, or completed'),
     body('sharedWith')
         .optional()

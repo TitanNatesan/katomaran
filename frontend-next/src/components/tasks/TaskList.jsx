@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { useSocket } from '@/components/providers/SocketProvider'
 import { EditTaskModal } from './EditTaskModal'
 import { ConfirmationDialog } from '@/components/common/ConfirmationDialog'
 import { LoadingCard } from '@/components/common/LoadingComponents'
@@ -17,9 +16,8 @@ import {
     ExclamationCircleIcon
 } from '@heroicons/react/24/outline'
 
-export function TaskList({ filters }) {
+export function TaskList({ filters, onTaskUpdate }) {
     const { data: session } = useSession()
-    const socket = useSocket()
     const [tasks, setTasks] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
@@ -33,63 +31,59 @@ export function TaskList({ filters }) {
         const fetchTasks = async () => {
             try {
                 setLoading(true)
+
+                if (!session?.backendToken) {
+                    setError('Backend authentication required. Please use email/password login for full functionality.')
+                    setLoading(false)
+                    return
+                }
+
                 const response = await axios.get(
                     `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks`,
                     {
                         headers: {
-                            Authorization: `Bearer ${session?.backendToken}`,
+                            Authorization: `Bearer ${session.backendToken}`,
                         },
                     }
                 )
                 setTasks(response.data.tasks || [])
+                console.log('Fetched tasks:', response.data.tasks)
                 setError(null)
             } catch (error) {
                 console.error('Error fetching tasks:', error)
-                setError('Failed to load tasks')
+                if (error.response?.status === 401) {
+                    setError('Authentication failed. Please login again with email/password.')
+                } else {
+                    setError('Failed to load tasks')
+                }
                 toast.error('Failed to load tasks')
             } finally {
                 setLoading(false)
             }
         }
 
-        if (session?.backendToken) {
+        if (session?.user) {
             fetchTasks()
         }
-    }, [session?.backendToken])
+    }, [session])
 
-    // Socket.io real-time updates
-    useEffect(() => {
-        if (!socket) return
-
-        const handleTaskCreated = (newTask) => {
-            setTasks((prev) => [newTask, ...prev])
-            toast.success('New task created!')
-        }
-
-        const handleTaskUpdated = (updatedTask) => {
-            setTasks((prev) =>
-                prev.map((task) =>
-                    task._id === updatedTask._id ? updatedTask : task
-                )
+    // Refresh tasks function for manual updates
+    const refreshTasks = async () => {
+        try {
+            const response = await axios.get(
+                `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${session?.backendToken}`,
+                    },
+                }
             )
-            toast.info('Task updated!')
+            setTasks(response.data.tasks || [])
+            if (onTaskUpdate) onTaskUpdate()
+        } catch (error) {
+            console.error('Error refreshing tasks:', error)
         }
-
-        const handleTaskDeleted = (taskId) => {
-            setTasks((prev) => prev.filter((task) => task._id !== taskId))
-            toast.info('Task deleted!')
-        }
-
-        socket.on('taskCreated', handleTaskCreated)
-        socket.on('taskUpdated', handleTaskUpdated)
-        socket.on('taskDeleted', handleTaskDeleted)
-
-        return () => {
-            socket.off('taskCreated', handleTaskCreated)
-            socket.off('taskUpdated', handleTaskUpdated)
-            socket.off('taskDeleted', handleTaskDeleted)
-        }
-    }, [socket])
+    }
 
     // Filter tasks based on filters
     const filteredTasks = tasks.filter((task) => {
@@ -137,7 +131,8 @@ export function TaskList({ filters }) {
             toast.success('Task deleted successfully')
             setIsDeleteDialogOpen(false)
             setTaskToDelete(null)
-            // Task will be removed via socket update
+            // Refresh the task list after deletion
+            await refreshTasks()
         } catch (error) {
             console.error('Error deleting task:', error)
             toast.error('Failed to delete task')
@@ -160,29 +155,41 @@ export function TaskList({ filters }) {
         setIsEditModalOpen(true)
     }
 
-    const handleTaskUpdated = (updatedTask) => {
-        setTasks(prev => prev.map(task =>
-            task._id === updatedTask._id ? updatedTask : task
-        ))
+    const handleTaskUpdated = async (updatedTask) => {
+        // Refresh the task list after update
+        await refreshTasks()
         setEditingTask(null)
         setIsEditModalOpen(false)
+        toast.success('Task updated successfully')
     }
 
     const handleUpdateTaskStatus = async (taskId, newStatus) => {
         try {
+            if (!session?.backendToken) {
+                toast.error('Please login with email/password to update tasks')
+                return
+            }
+
             await axios.patch(
                 `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks/${taskId}`,
                 { status: newStatus },
                 {
                     headers: {
-                        Authorization: `Bearer ${session?.backendToken}`,
+                        Authorization: `Bearer ${session.backendToken}`,
+                        'Content-Type': 'application/json'
                     },
                 }
             )
-            // Task will be updated via socket update
+            // Refresh the task list after update
+            await refreshTasks()
+            toast.success('Task status updated!')
         } catch (error) {
             console.error('Error updating task:', error)
-            toast.error('Failed to update task')
+            if (error.response?.status === 401) {
+                toast.error('Authentication failed. Please login again.')
+            } else {
+                toast.error('Failed to update task')
+            }
         }
     }
 
@@ -203,7 +210,7 @@ export function TaskList({ filters }) {
         switch (status) {
             case 'completed':
                 return <CheckCircleIcon className="h-5 w-5 text-green-500" />
-            case 'in_progress':
+            case 'in progress':
                 return <ClockIcon className="h-5 w-5 text-blue-500" />
             case 'pending':
                 return <ExclamationCircleIcon className="h-5 w-5 text-yellow-500" />
@@ -256,9 +263,9 @@ export function TaskList({ filters }) {
     return (
         <>
             <div className="space-y-4">
-                {filteredTasks.map((task) => (
+                {filteredTasks.map((task, i) => (
                     <div
-                        key={task._id}
+                        key={i}
                         className={`bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow ${isOverdue(task.dueDate, task.status) ? 'border-red-200' : 'border-gray-200'
                             }`}
                     >

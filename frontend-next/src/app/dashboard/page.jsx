@@ -15,6 +15,7 @@ export default function Dashboard() {
     const { data: session, status } = useSession()
     const router = useRouter()
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+    const [taskListKey, setTaskListKey] = useState(0) // For forcing re-render
     const [filters, setFilters] = useState({
         status: 'all',
         priority: 'all',
@@ -22,6 +23,17 @@ export default function Dashboard() {
         dueDate: 'all'
     })
     const searchInputRef = useRef(null)
+
+    // Debug session
+    useEffect(() => {
+        if (session) {
+            console.log('Dashboard Session:', {
+                user: session.user,
+                backendToken: session.backendToken ? 'Present' : 'Missing',
+                tokenLength: session.backendToken?.length || 0
+            })
+        }
+    }, [session])
 
     useKeyboardShortcuts({
         onNewTask: () => setIsCreateModalOpen(true),
@@ -31,6 +43,11 @@ export default function Dashboard() {
             searchInputRef.current?.blur()
         }
     })
+
+    // Function to refresh task list
+    const refreshTasks = () => {
+        setTaskListKey(prev => prev + 1)
+    }
 
     useEffect(() => {
         if (status === 'unauthenticated') {
@@ -49,7 +66,6 @@ export default function Dashboard() {
     if (status === 'unauthenticated') {
         return null // Will redirect to login
     }
-
     return (
         <DashboardLayout>
             <div className="space-y-6">
@@ -69,14 +85,13 @@ export default function Dashboard() {
                             onClick={() => setIsCreateModalOpen(true)}
                             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                         >
-                            <PlusIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
-                            New Task
+                            <PlusIcon className="h-5 w-5 mr-2" /> New Task
                         </button>
                     </div>
                 </div>
 
                 {/* Stats */}
-                <TaskStats />
+                <TaskStats refreshStatsTrigger={taskListKey} />
 
                 {/* Filters */}
                 <TaskFilters
@@ -87,10 +102,9 @@ export default function Dashboard() {
 
                 {/* Task List */}
                 <TaskList
+                    key={taskListKey}
                     filters={filters}
-                    onTaskUpdate={() => {
-                        // Refresh task list - this will be handled by socket events
-                    }}
+                    onTaskUpdate={refreshTasks}
                 />
 
                 {/* Create Task Modal */}
@@ -99,7 +113,7 @@ export default function Dashboard() {
                     onClose={() => setIsCreateModalOpen(false)}
                     onTaskCreated={() => {
                         setIsCreateModalOpen(false)
-                        // Task list will be updated via socket events
+                        refreshTasks() // Refresh tasks after creating
                     }}
                 />
             </div>

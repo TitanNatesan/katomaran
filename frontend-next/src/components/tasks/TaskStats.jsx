@@ -10,7 +10,8 @@ import {
     ExclamationTriangleIcon
 } from '@heroicons/react/24/outline'
 
-export function TaskStats() {
+
+export function TaskStats({ refreshStatsTrigger }) {
     const { data: session } = useSession()
     const [stats, setStats] = useState({
         total: 0,
@@ -59,23 +60,24 @@ export function TaskStats() {
         }
 
         fetchStats()
-    }, [session?.backendToken])
+    }, [session?.backendToken, refreshStatsTrigger])
 
     if (loading) {
         return (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
                 {[...Array(4)].map((_, i) => (
-                    <div key={i} className="bg-white overflow-hidden shadow rounded-lg animate-pulse">
-                        <div className="p-5">
+                    <div key={i} className="bg-white overflow-hidden shadow-lg rounded-xl animate-pulse">
+                        <div className="p-6">
                             <div className="flex items-center">
                                 <div className="flex-shrink-0">
-                                    <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                                    <div className="h-12 w-12 bg-gray-200 rounded-lg"></div>
                                 </div>
                                 <div className="ml-5 w-0 flex-1">
-                                    <div className="h-4 bg-gray-200 rounded w-16 mb-2"></div>
-                                    <div className="h-6 bg-gray-200 rounded w-12"></div>
+                                    <div className="h-5 bg-gray-200 rounded w-20 mb-3"></div>
+                                    <div className="h-8 bg-gray-200 rounded w-16"></div>
                                 </div>
                             </div>
+                            <div className="mt-4 h-2 bg-gray-200 rounded-full w-full"></div>
                         </div>
                     </div>
                 ))}
@@ -88,48 +90,69 @@ export function TaskStats() {
             name: 'Total Tasks',
             stat: stats.total,
             icon: ClipboardDocumentListIcon,
-            color: 'text-blue-600',
-            bgColor: 'bg-blue-100',
+            iconColor: 'text-blue-50',
+            bgGradient: 'bg-gradient-to-br from-blue-400 to-blue-600',
+            borderColor: 'border-blue-200',
+            shadowColor: 'shadow-blue-100',
+            progressColor: 'bg-blue-500',
         },
         {
             name: 'In Progress',
             stat: stats.inProgress,
             icon: ClockIcon,
-            color: 'text-yellow-600',
-            bgColor: 'bg-yellow-100',
+            iconColor: 'text-amber-50',
+            bgGradient: 'bg-gradient-to-br from-amber-400 to-amber-600',
+            borderColor: 'border-amber-200',
+            shadowColor: 'shadow-amber-100',
+            progressColor: 'bg-amber-500',
         },
         {
             name: 'Completed',
             stat: stats.completed,
             icon: CheckCircleIcon,
-            color: 'text-green-600',
-            bgColor: 'bg-green-100',
+            iconColor: 'text-emerald-50',
+            bgGradient: 'bg-gradient-to-br from-emerald-400 to-emerald-600',
+            borderColor: 'border-emerald-200',
+            shadowColor: 'shadow-emerald-100',
+            progressColor: 'bg-emerald-500',
         },
         {
             name: 'Overdue',
             stat: stats.overdue,
             icon: ExclamationTriangleIcon,
-            color: 'text-red-600',
-            bgColor: 'bg-red-100',
+            iconColor: 'text-rose-50',
+            bgGradient: 'bg-gradient-to-br from-rose-400 to-rose-600',
+            borderColor: 'border-rose-200',
+            shadowColor: 'shadow-rose-100',
+            progressColor: 'bg-rose-500',
         },
     ]
 
     return (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {statItems.map((item) => (
-                <div key={item.name} className="bg-white overflow-hidden shadow rounded-lg">
-                    <div className="p-5">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {statItems.map((item, i) => (
+                <div
+                    key={i}
+                    className={`bg-white overflow-hidden rounded-xl border ${item.borderColor} ${item.shadowColor} shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1`}
+                >
+                    <div className="p-6">
                         <div className="flex items-center">
                             <div className="flex-shrink-0">
-                                <div className={`p-2 ${item.bgColor} rounded-lg`}>
-                                    <item.icon className={`h-6 w-6 ${item.color}`} aria-hidden="true" />
+                                <div className={`p-3 ${item.bgGradient} rounded-xl shadow-md`}>
+                                    <item.icon className={`h-8 w-8 ${item.iconColor}`} aria-hidden="true" />
                                 </div>
                             </div>
                             <div className="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt className="text-sm font-medium text-gray-500 truncate">{item.name}</dt>
-                                    <dd className="text-2xl font-semibold text-gray-900">{item.stat}</dd>
-                                </dl>
+                                <p className="text-sm font-medium text-gray-600 uppercase tracking-wider">{item.name}</p>
+                                <p className="text-3xl font-extrabold text-gray-900 backdrop-blur-sm">{item.stat}</p>
+                            </div>
+                        </div>
+                        <div className="mt-4 pt-2">
+                            <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                                <div
+                                    className={`h-full ${item.progressColor} rounded-full`}
+                                    style={{ width: `${Math.min(100, (item.stat / Math.max(stats.total, 1)) * 100)}%` }}
+                                ></div>
                             </div>
                         </div>
                     </div>

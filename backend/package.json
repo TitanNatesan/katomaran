@@ -13,7 +13,7 @@
         "task-management",
         "express",
         "mongodb",
-        "socket.io"
+        "rest-api"
     ],
     "author": "",
     "license": "MIT",
@@ -31,7 +31,6 @@
         "passport": "^0.7.0",
         "passport-github2": "^0.1.12",
         "passport-google-oauth20": "^2.0.0",
-        "socket.io": "^4.7.4",
         "winston": "^3.11.0"
     },
     "devDependencies": {

@@ -1,29 +1,6 @@
 const logger = require('../config/logger');
 
 /**
- * Emit real-time task events to relevant users
- * @param {Object} io - Socket.io instance
- * @param {string} eventName - Event name
- * @param {Object} data - Event data
- * @param {Array} recipients - Array of user IDs to notify
- */
-const emitTaskEvent = (io, eventName, data, recipients) => {
-    try {
-        if (!recipients || recipients.length === 0) {
-            return;
-        }
-
-        recipients.forEach(userId => {
-            io.to(userId.toString()).emit(eventName, data);
-        });
-
-        logger.info(`Task event emitted: ${eventName} to ${recipients.length} users`);
-    } catch (error) {
-        logger.error(`Error emitting task event: ${error.message}`);
-    }
-};
-
-/**
  * Check if user has access to a task
  * @param {Object} task - Task object
  * @param {string} userId - User ID
@@ -110,7 +87,6 @@ const filterTasks = (tasks, filters) => {
 };
 
 module.exports = {
-    emitTaskEvent,
     hasTaskAccess,
     isTaskCreator,
     getTaskDueDateStatus,

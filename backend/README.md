@@ -4,9 +4,8 @@ A professional-grade backend for task management application built with Node.js,
 
 ## Features
 
-- **User Authentication**: JWT and Google OAuth authentication
+- **User Authentication**: JWT, Google OAuth, and GitHub OAuth authentication
 - **Task Management**: Complete CRUD operations for tasks
-- **Real-time Updates**: WebSocket support using Socket.io
 - **Task Sharing**: Share tasks with other users
 - **Security**: Rate limiting, input validation, and secure password hashing
 - **Professional Structure**: Modular architecture with proper error handling and logging
@@ -15,8 +14,8 @@ A professional-grade backend for task management application built with Node.js,
 
 - **Framework**: Express.js
 - **Database**: MongoDB with Mongoose
-- **Authentication**: JWT, Google OAuth
-- **Real-time**: Socket.io
+- **Authentication**: JWT, Google OAuth, GitHub OAuth
+- **Real-time**: REST API only
 - **Security**: express-rate-limit, express-validator, bcryptjs
 - **Logging**: Winston
 - **Testing**: Jest, Supertest

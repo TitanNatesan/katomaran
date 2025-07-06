@@ -1,7 +1,7 @@
 const { validationResult } = require('express-validator');
 const Task = require('../models/Task');
 const logger = require('../config/logger');
-const { emitTaskEvent, hasTaskAccess, isTaskCreator } = require('../utils/taskUtils');
+const { hasTaskAccess, isTaskCreator } = require('../utils/taskUtils');
 
 // @desc    Get all tasks for authenticated user
 // @route   GET /api/tasks
@@ -109,12 +109,6 @@ const createTask = async (req, res, next) => {
 
         logger.info(`Task created: ${task.title} by ${req.user.email}`);
 
-        // Emit real-time event
-        emitTaskEvent(req.io, 'taskCreated', {
-            task,
-            createdBy: req.user.id
-        }, [req.user.id, ...task.sharedWith]);
-
         res.status(201).json({
             success: true,
             task
@@ -166,12 +160,6 @@ const updateTask = async (req, res, next) => {
 
         logger.info(`Task updated: ${updatedTask.title} by ${req.user.email}`);
 
-        // Emit real-time event
-        emitTaskEvent(req.io, 'taskUpdated', {
-            task: updatedTask,
-            updatedBy: req.user.id
-        }, [req.user.id, ...updatedTask.sharedWith]);
-
         res.json({
             success: true,
             task: updatedTask
@@ -198,12 +186,6 @@ const deleteTask = async (req, res, next) => {
         await Task.findByIdAndDelete(req.params.id);
 
         logger.info(`Task deleted: ${task.title} by ${req.user.email}`);
-
-        // Emit real-time event
-        emitTaskEvent(req.io, 'taskDeleted', {
-            taskId: req.params.id,
-            deletedBy: req.user.id
-        }, [req.user.id, ...task.sharedWith]);
 
         res.json({
             success: true,
@@ -262,15 +244,54 @@ const shareTask = async (req, res, next) => {
 
         logger.info(`Task shared: ${task.title} by ${req.user.email}`);
 
-        // Emit real-time event
-        emitTaskEvent(req.io, 'taskShared', {
-            task,
-            sharedBy: req.user.id
-        }, [req.user.id, ...task.sharedWith]);
-
         res.json({
             success: true,
             task
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Partially update task (without validation)
+// @route   PATCH /api/tasks/:id
+// @access  Private
+const patchTask = async (req, res, next) => {
+    try {
+        const task = await Task.findOne({
+            _id: req.params.id,
+            creator: req.user.id
+        });
+
+        if (!task) {
+            return res.status(404).json({
+                success: false,
+                message: 'Task not found or not authorized'
+            });
+        }
+
+        const allowedUpdates = ['title', 'description', 'dueDate', 'priority', 'status', 'sharedWith'];
+        const updates = {};
+
+        allowedUpdates.forEach(field => {
+            if (req.body[field] !== undefined) {
+                updates[field] = req.body[field];
+            }
+        });
+
+        const updatedTask = await Task.findByIdAndUpdate(
+            req.params.id,
+            updates,
+            { new: true, runValidators: false } // Skip validation for PATCH
+        )
+            .populate('creator', 'name email')
+            .populate('sharedWith', 'name email');
+
+        logger.info(`Task patched: ${updatedTask.title} by ${req.user.email}`);
+
+        res.json({
+            success: true,
+            task: updatedTask
         });
     } catch (error) {
         next(error);
@@ -283,5 +304,6 @@ module.exports = {
     createTask,
     updateTask,
     deleteTask,
-    shareTask
+    shareTask,
+    patchTask
 };

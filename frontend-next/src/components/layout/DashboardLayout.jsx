@@ -53,13 +53,13 @@ export function DashboardLayout({ children }) {
                             <span className="text-2xl font-bold text-blue-600">Katomaran</span>
                         </div>
                         <nav className="mt-5 px-2 space-y-1">
-                            {navigation.map((item) => (
+                            {navigation.map((item, i) => (
                                 <Link
-                                    key={item.name}
+                                    key={i}
                                     href={item.href}
                                     className={`${item.current
-                                            ? 'bg-gray-100 text-gray-900'
-                                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                        ? 'bg-gray-100 text-gray-900'
+                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                                         } group flex items-center px-2 py-2 text-base font-medium rounded-md`}
                                 >
                                     <item.icon
@@ -102,13 +102,13 @@ export function DashboardLayout({ children }) {
                                 <span className="text-2xl font-bold text-blue-600">Katomaran</span>
                             </div>
                             <nav className="mt-5 flex-1 px-2 space-y-1">
-                                {navigation.map((item) => (
+                                {navigation.map((item, i) => (
                                     <Link
-                                        key={item.name}
+                                        key={i}
                                         href={item.href}
                                         className={`${item.current
-                                                ? 'bg-gray-100 text-gray-900'
-                                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                            ? 'bg-gray-100 text-gray-900'
+                                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                                             } group flex items-center px-2 py-2 text-sm font-medium rounded-md`}
                                     >
                                         <item.icon
@@ -189,6 +189,15 @@ export function DashboardLayout({ children }) {
                                 className="bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                             >
                                 <BellIcon className="h-6 w-6" aria-hidden="true" />
+                            </button>
+
+                            <button
+                                onClick={handleSignOut}
+                                type="button"
+                                className="ml-3 bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                aria-label="Sign out"
+                            >
+                                <ArrowRightOnRectangleIcon className="h-6 w-6" aria-hidden="true" />
                             </button>
                         </div>
                     </div>
