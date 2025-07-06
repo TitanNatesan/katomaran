@@ -50,6 +50,16 @@ export default function Dashboard() {
     }
 
     useEffect(() => {
+        const { token } = router.query
+        if (token) {
+            localStorage.setItem('token', token)
+            router.replace('/dashboard') // Clean URL
+        } else if (!localStorage.getItem('token')) {
+            router.push('/login')
+        }
+    }, [router.query, router])
+
+    useEffect(() => {
         if (status === 'unauthenticated') {
             router.push('/login')
         }

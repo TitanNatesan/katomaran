@@ -18,7 +18,9 @@ const userSchema = new mongoose.Schema({
         type: String
     },
     githubId: {
-        type: String
+        type: String,
+        unique: true,
+        sparse: true
     },
     username: {
         type: String,

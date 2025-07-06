@@ -34,58 +34,17 @@ router.post('/github', githubAuth);
 // @route   GET /api/auth/github
 // @desc    GitHub OAuth login
 // @access  Public
-router.get('/github', (req, res, next) => {
-    // Check if GitHub OAuth is configured
-    if (!process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET ||
-        process.env.GITHUB_CLIENT_ID === 'your_github_client_id_here' ||
-        process.env.GITHUB_CLIENT_SECRET === 'your_github_client_secret_here') {
-        return res.status(503).json({
-            success: false,
-            message: 'GitHub OAuth is not configured on this server'
-        });
-    }
-    passport.authenticate('github', { scope: ['user:email'] })(req, res, next);
-});
+router.get('/github', passport.authenticate('github', { scope: ['user:email'] }));
 
 // @route   GET /api/auth/github/callback
 // @desc    GitHub OAuth callback
 // @access  Public
-router.get('/github/callback', (req, res, next) => {
-    // Check if GitHub OAuth is configured
-    if (!process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET ||
-        process.env.GITHUB_CLIENT_ID === 'your_github_client_id_here' ||
-        process.env.GITHUB_CLIENT_SECRET === 'your_github_client_secret_here') {
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-        return res.redirect(`${frontendUrl}/auth/callback?error=github_not_configured`);
+router.get('/github/callback',
+    passport.authenticate('github', { failureRedirect: '/' }),
+    (req, res) => {
+        const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        res.redirect(`${process.env.FRONTEND_URL}/dashboard?token=${token}`);
     }
-    passport.authenticate('github', { session: false })(req, res, next);
-}, async (req, res) => {
-    try {
-        const user = req.user;
-
-        // Generate JWT token
-        const token = generateToken(user._id);
-
-        // Log successful authentication
-        logger.info('GitHub OAuth successful', {
-            userId: user._id,
-            email: user.email
-        });
-
-        // Redirect to frontend with token
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-        res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
-
-    } catch (error) {
-        logger.error('GitHub OAuth callback error', {
-            error: error.message,
-            stack: error.stack
-        });
-
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-        res.redirect(`${frontendUrl}/auth/callback?error=auth_failed`);
-    }
-}
 );
 
 // @route   GET /api/auth/google
