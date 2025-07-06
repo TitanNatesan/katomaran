@@ -7,6 +7,7 @@ import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@
 import { XMarkIcon, PencilIcon, CalendarIcon, ChevronUpIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
 import axios from 'axios'
 import { toast } from 'react-toastify'
+import { getAuthToken, getAuthHeaders } from '@/utils/authUtils'
 
 export function EditTaskModal({ isOpen, onClose, task, onTaskUpdated }) {
     const { data: session } = useSession()
@@ -55,14 +56,18 @@ export function EditTaskModal({ isOpen, onClose, task, onTaskUpdated }) {
                 // sharedWith is handled by the separate share endpoint
             }
 
+            // Get token using our utility function
+            const backendToken = getAuthToken(session);
+
+            if (!backendToken) {
+                throw new Error('Authentication token is missing');
+            }
+
             const response = await axios.put(
                 `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks/${task._id}`,
                 taskData,
                 {
-                    headers: {
-                        Authorization: `Bearer ${session?.backendToken}`,
-                        'Content-Type': 'application/json',
-                    },
+                    headers: getAuthHeaders(backendToken)
                 }
             )
 
@@ -73,9 +78,7 @@ export function EditTaskModal({ isOpen, onClose, task, onTaskUpdated }) {
                     const userResponse = await axios.get(
                         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/email/${data.sharedWith}`,
                         {
-                            headers: {
-                                Authorization: `Bearer ${session?.backendToken}`,
-                            },
+                            headers: getAuthHeaders(backendToken)
                         }
                     );
 
@@ -86,10 +89,7 @@ export function EditTaskModal({ isOpen, onClose, task, onTaskUpdated }) {
                             `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks/${task._id}/share`,
                             { userIds: [userId] },
                             {
-                                headers: {
-                                    Authorization: `Bearer ${session?.backendToken}`,
-                                    'Content-Type': 'application/json',
-                                },
+                                headers: getAuthHeaders(backendToken)
                             }
                         );
                     } else {

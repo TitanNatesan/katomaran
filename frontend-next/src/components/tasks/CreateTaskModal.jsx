@@ -8,6 +8,7 @@ import { Fragment } from 'react'
 import { XMarkIcon, PlusCircleIcon, CalendarIcon, ChevronUpIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
 import axios from 'axios'
 import { toast } from 'react-toastify'
+import { getAuthToken, getAuthHeaders } from '@/utils/authUtils'
 
 export function CreateTaskModal({ isOpen, onClose, onTaskCreated }) {
     const { data: session } = useSession()
@@ -35,12 +36,17 @@ export function CreateTaskModal({ isOpen, onClose, onTaskCreated }) {
             // Handle sharedWith email
             if (data.sharedWith && data.sharedWith.trim() !== '') {
                 try {
+                    // Get token using our utility function
+                    const backendToken = getAuthToken(session);
+
+                    if (!backendToken) {
+                        throw new Error('Authentication token is missing');
+                    }
+
                     const userResponse = await axios.get(
                         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/email/${data.sharedWith.trim()}`,
                         {
-                            headers: {
-                                Authorization: `Bearer ${session?.backendToken}`,
-                            },
+                            headers: getAuthHeaders(backendToken)
                         }
                     );
 
@@ -64,10 +70,7 @@ export function CreateTaskModal({ isOpen, onClose, onTaskCreated }) {
                 `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks`,
                 taskData,
                 {
-                    headers: {
-                        Authorization: `Bearer ${session?.backendToken}`,
-                        'Content-Type': 'application/json',
-                    },
+                    headers: getAuthHeaders(backendToken)
                 }
             )
 

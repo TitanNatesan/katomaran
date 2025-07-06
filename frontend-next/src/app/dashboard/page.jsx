@@ -1,7 +1,7 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState, useRef } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { TaskList } from '@/components/tasks/TaskList'
@@ -10,10 +10,12 @@ import { TaskStats } from '@/components/tasks/TaskStats'
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
 import { useKeyboardShortcuts } from '@/components/common/KeyboardShortcuts'
 import { PlusIcon } from '@heroicons/react/24/outline'
+import { storeAuthToken } from '@/utils/authUtils'
 
 export default function Dashboard() {
     const { data: session, status } = useSession()
     const router = useRouter()
+    const searchParams = useSearchParams()
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
     const [taskListKey, setTaskListKey] = useState(0) // For forcing re-render
     const [filters, setFilters] = useState({
@@ -50,14 +52,14 @@ export default function Dashboard() {
     }
 
     useEffect(() => {
-        const { token } = router.query
+        const token = searchParams.get('token')
         if (token) {
-            localStorage.setItem('token', token)
+            storeAuthToken(token)
             router.replace('/dashboard') // Clean URL
         } else if (!localStorage.getItem('token')) {
             router.push('/login')
         }
-    }, [router.query, router])
+    }, [searchParams, router])
 
     useEffect(() => {
         if (status === 'unauthenticated') {
@@ -81,6 +83,17 @@ export default function Dashboard() {
             }
         }
     }, [router]);
+
+    // Handle token from URL (from OAuth callback)
+    useEffect(() => {
+        const token = searchParams.get('token');
+        if (token) {
+            storeAuthToken(token);
+            // Clean up URL by removing the token parameter
+            const newUrl = window.location.pathname;
+            router.replace(newUrl);
+        }
+    }, [searchParams, router]);
 
     if (status === 'loading') {
         return (

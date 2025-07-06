@@ -15,6 +15,7 @@ import {
     ClockIcon,
     ExclamationCircleIcon
 } from '@heroicons/react/24/outline'
+import { getAuthToken, getAuthHeaders } from '@/utils/authUtils'
 
 export function TaskList({ filters, onTaskUpdate }) {
     const { data: session } = useSession()
@@ -32,8 +33,8 @@ export function TaskList({ filters, onTaskUpdate }) {
             try {
                 setLoading(true)
 
-                // Get token from session or localStorage
-                const backendToken = session?.backendToken || (typeof window !== 'undefined' ? localStorage.getItem('backendToken') : null);
+                // Get token using our utility function
+                const backendToken = getAuthToken(session);
 
                 if (!backendToken) {
                     setError('Backend authentication required. Please use email/password login for full functionality.')
@@ -44,9 +45,7 @@ export function TaskList({ filters, onTaskUpdate }) {
                 const response = await axios.get(
                     `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks`,
                     {
-                        headers: {
-                            Authorization: `Bearer ${backendToken}`,
-                        },
+                        headers: getAuthHeaders(backendToken)
                     }
                 )
                 setTasks(response.data.tasks || [])

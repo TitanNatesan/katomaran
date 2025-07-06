@@ -9,6 +9,7 @@ import {
     CheckCircleIcon,
     ExclamationTriangleIcon
 } from '@heroicons/react/24/outline'
+import { getAuthToken, getAuthHeaders } from '@/utils/authUtils'
 
 
 export function TaskStats({ refreshStatsTrigger }) {
@@ -24,8 +25,8 @@ export function TaskStats({ refreshStatsTrigger }) {
 
     useEffect(() => {
         const fetchStats = async () => {
-            // Get token from session or localStorage
-            const backendToken = session?.backendToken || (typeof window !== 'undefined' ? localStorage.getItem('backendToken') : null);
+            // Get token using our utility function
+            const backendToken = getAuthToken(session);
 
             if (!backendToken) return;
 
@@ -33,9 +34,7 @@ export function TaskStats({ refreshStatsTrigger }) {
                 const response = await axios.get(
                     `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks`,
                     {
-                        headers: {
-                            Authorization: `Bearer ${backendToken}`
-                        }
+                        headers: getAuthHeaders(backendToken)
                     }
                 )
 
