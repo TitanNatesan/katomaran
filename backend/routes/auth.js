@@ -89,8 +89,8 @@ router.get('/google/callback', (req, res, next) => {
         });
 
         // Redirect to frontend with token
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-        res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        res.redirect(`${frontendUrl}/dashboard?token=${token}`);
 
     } catch (error) {
         logger.error('Google OAuth callback error', {
@@ -98,8 +98,8 @@ router.get('/google/callback', (req, res, next) => {
             stack: error.stack
         });
 
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-        res.redirect(`${frontendUrl}/auth/callback?error=auth_failed`);
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        res.redirect(`${frontendUrl}/login?error=google_auth_failed`);
     }
 });
 
