@@ -21,10 +21,7 @@ import {
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon, key: 'dashboard' },
-    { name: 'My Tasks', href: '/dashboard?view=my-tasks', icon: ClipboardDocumentListIcon, key: 'my-tasks' },
-    { name: 'Shared Tasks', href: '/dashboard?view=shared-tasks', icon: UserGroupIcon, key: 'shared-tasks' },
     { name: 'Analytics', href: '/dashboard?view=analytics', icon: ChartPieIcon, key: 'analytics' },
-    { name: 'Settings', href: '/dashboard?view=settings', icon: CogIcon, key: 'settings' },
 ]
 
 export function DashboardLayout({ children, currentView = 'dashboard' }) {
