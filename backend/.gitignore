@@ -8,3 +8,4 @@ coverage/
 logs/
 .nyc_output/
 .jest/
+!*.js
