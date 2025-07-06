@@ -1,7 +1,8 @@
 const express = require('express');
 const passport = require('passport');
 const router = express.Router();
-const { register, login, googleAuth, githubAuth, getMe } = require('../controllers/authController');
+const jwt = require('jsonwebtoken');
+const { register, login, getMe } = require('../controllers/authController');
 const { registerValidation, loginValidation } = require('../validators/authValidator');
 const authMiddleware = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimiter');
@@ -21,16 +22,6 @@ router.post('/register', registerValidation, register);
 // @access  Public
 router.post('/login', loginValidation, login);
 
-// @route   POST /api/auth/google
-// @desc    Google OAuth login
-// @access  Public
-router.post('/google', googleAuth);
-
-// @route   POST /api/auth/github
-// @desc    GitHub OAuth login
-// @access  Public
-router.post('/github', githubAuth);
-
 // @route   GET /api/auth/github
 // @desc    GitHub OAuth login
 // @access  Public
@@ -42,8 +33,14 @@ router.get('/github', passport.authenticate('github', { scope: ['user:email'] })
 router.get('/github/callback',
     passport.authenticate('github', { failureRedirect: '/', session: false }),
     (req, res) => {
-        const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-        res.redirect(`${process.env.FRONTEND_URL}/dashboard?token=${token}`);
+        try {
+            const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+            logger.info('GitHub OAuth successful', { userId: req.user._id });
+            res.redirect(`${process.env.FRONTEND_URL}/dashboard?token=${token}`);
+        } catch (err) {
+            logger.error('GitHub callback error', { error: err.message });
+            res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
+        }
     }
 );
 
@@ -78,28 +75,12 @@ router.get('/google/callback', (req, res, next) => {
 }, async (req, res) => {
     try {
         const user = req.user;
-
-        // Generate JWT token
-        const token = generateToken(user._id);
-
-        // Log successful authentication
-        logger.info('Google OAuth successful', {
-            userId: user._id,
-            email: user.email
-        });
-
-        // Redirect to frontend with token
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        res.redirect(`${frontendUrl}/dashboard?token=${token}`);
-
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        logger.info('Google OAuth successful', { userId: user._id });
+        res.redirect(`${process.env.FRONTEND_URL}/dashboard?token=${token}`);
     } catch (error) {
-        logger.error('Google OAuth callback error', {
-            error: error.message,
-            stack: error.stack
-        });
-
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        res.redirect(`${frontendUrl}/login?error=google_auth_failed`);
+        logger.error('Google OAuth callback error', { error: error.message });
+        res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed`);
     }
 });
 

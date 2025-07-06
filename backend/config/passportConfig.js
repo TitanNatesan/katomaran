@@ -20,27 +20,36 @@ module.exports = function (passport) {
         },
             async (accessToken, refreshToken, profile, done) => {
                 try {
+                    logger.info('GitHub OAuth callback received', { profileId: profile.id });
+
+                    const email = (profile.emails && profile.emails[0] && profile.emails[0].value)
+                        ? profile.emails[0].value
+                        : `${profile.username || profile.id}@users.noreply.github.com`;
+
+                    if (!profile.emails || !profile.emails[0] || !profile.emails[0].value) {
+                        logger.warn('No email found in GitHub profile', { profileId: profile.id, username: profile.username });
+                    }
+
                     let user = await User.findOne({ githubId: profile.id });
                     if (!user) {
-                        // Ensure email exists, fallback to a placeholder if not available
-                        const email = (profile.emails && profile.emails[0] && profile.emails[0].value)
-                            ? profile.emails[0].value
-                            : `${profile.username || profile.id}@users.noreply.github.com`;
-
                         user = await User.create({
                             githubId: profile.id,
                             email: email,
                             username: profile.username,
                             name: profile.displayName || profile.username,
                         });
+                        logger.info('New GitHub user created', { userId: user._id, email: email });
+                    } else {
+                        logger.info('Existing GitHub user found', { userId: user._id, email: user.email });
                     }
                     return done(null, user);
                 } catch (err) {
+                    logger.error('GitHub OAuth error', { error: err.message, stack: err.stack });
                     return done(err, null);
                 }
             }));
     } else {
-        logger.warn('GitHub OAuth not configured - GITHUB_CLIENT_ID or GITHUB_CLIENT_SECRET missing');
+        logger.warn('GitHub OAuth not configured - missing or default credentials');
     }
 
     // Google Strategy - only initialize if credentials are available
@@ -65,7 +74,6 @@ module.exports = function (passport) {
 
                     // Check if user already exists with this Google ID
                     let user = await User.findOne({ googleId: profile.id });
-
                     if (user) {
                         logger.info('Existing Google user found', { userId: user._id });
                         return done(null, user);
@@ -94,7 +102,6 @@ module.exports = function (passport) {
                         email: email ? email.toLowerCase() : `${profile.id}@google.local`,
                         avatar: profile.photos?.[0]?.value || null
                     });
-
                     await user.save();
                     logger.info('New Google user created', { userId: user._id });
                     return done(null, user);
@@ -105,13 +112,11 @@ module.exports = function (passport) {
                 }
             }));
     } else {
-        logger.warn('Google OAuth not configured - GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET missing');
+        logger.warn('Google OAuth not configured - missing or default credentials');
     }
 
     // Serialize user for the session
-    passport.serializeUser((user, done) => {
-        done(null, user._id);
-    });
+    passport.serializeUser((user, done) => done(null, user._id));
 
     // Deserialize user from the session
     passport.deserializeUser(async (id, done) => {
