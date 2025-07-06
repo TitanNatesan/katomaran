@@ -24,14 +24,17 @@ export function TaskStats({ refreshStatsTrigger }) {
 
     useEffect(() => {
         const fetchStats = async () => {
-            if (!session?.backendToken) return
+            // Get token from session or localStorage
+            const backendToken = session?.backendToken || (typeof window !== 'undefined' ? localStorage.getItem('backendToken') : null);
+
+            if (!backendToken) return;
 
             try {
                 const response = await axios.get(
                     `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks`,
                     {
                         headers: {
-                            Authorization: `Bearer ${session.backendToken}`
+                            Authorization: `Bearer ${backendToken}`
                         }
                     }
                 )

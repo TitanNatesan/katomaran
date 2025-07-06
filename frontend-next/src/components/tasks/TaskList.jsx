@@ -32,7 +32,10 @@ export function TaskList({ filters, onTaskUpdate }) {
             try {
                 setLoading(true)
 
-                if (!session?.backendToken) {
+                // Get token from session or localStorage
+                const backendToken = session?.backendToken || (typeof window !== 'undefined' ? localStorage.getItem('backendToken') : null);
+
+                if (!backendToken) {
                     setError('Backend authentication required. Please use email/password login for full functionality.')
                     setLoading(false)
                     return
@@ -42,7 +45,7 @@ export function TaskList({ filters, onTaskUpdate }) {
                     `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks`,
                     {
                         headers: {
-                            Authorization: `Bearer ${session.backendToken}`,
+                            Authorization: `Bearer ${backendToken}`,
                         },
                     }
                 )

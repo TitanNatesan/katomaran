@@ -65,6 +65,23 @@ export default function Dashboard() {
         }
     }, [status, router])
 
+    // Handle token from URL (for OAuth redirects)
+    useEffect(() => {
+        // Check if we're in the browser environment
+        if (typeof window !== 'undefined') {
+            // Get token from URL search params
+            const params = new URLSearchParams(window.location.search);
+            const token = params.get('token');
+
+            if (token) {
+                console.log('Token found in URL, storing in localStorage');
+                localStorage.setItem('backendToken', token);
+                // Clean URL by removing the token parameter
+                router.replace('/dashboard');
+            }
+        }
+    }, [router]);
+
     if (status === 'loading') {
         return (
             <div className="min-h-screen flex items-center justify-center">

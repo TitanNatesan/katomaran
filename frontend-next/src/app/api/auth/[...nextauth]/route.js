@@ -107,9 +107,21 @@ export const authOptions = {
             return token
         },
         async session({ session, token }) {
-            session.user = token.user
-            session.backendToken = token.backendToken
-            return session
+            // Add user info from the token to the session
+            session.user = token.user || session.user;
+
+            // Add the backend token to the session if it exists
+            if (token.backendToken) {
+                session.backendToken = token.backendToken;
+            } else if (typeof localStorage !== 'undefined') {
+                // Try to get token from localStorage as fallback for OAuth flows
+                const storedToken = localStorage.getItem('backendToken');
+                if (storedToken) {
+                    session.backendToken = storedToken;
+                }
+            }
+
+            return session;
         },
         async redirect({ url, baseUrl }) {
             return url.startsWith(baseUrl) ? url : baseUrl + '/dashboard'

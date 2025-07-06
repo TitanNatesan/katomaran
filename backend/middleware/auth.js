@@ -14,7 +14,18 @@ const authMiddleware = async (req, res, next) => {
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await User.findById(decoded.userId).select('-password');
+
+        // Support both formats: { id: '...' } (from OAuth) and { userId: '...' } (from login endpoint)
+        const userId = decoded.userId || decoded.id;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid token format'
+            });
+        }
+
+        const user = await User.findById(userId).select('-password');
 
         if (!user) {
             return res.status(401).json({

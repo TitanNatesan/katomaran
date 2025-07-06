@@ -34,7 +34,8 @@ router.get('/github/callback',
     passport.authenticate('github', { failureRedirect: '/', session: false }),
     (req, res) => {
         try {
-            const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+            // Generate JWT token using userId, not just id
+            const token = jwt.sign({ userId: req.user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
             logger.info('GitHub OAuth successful', { userId: req.user._id });
             res.redirect(`${process.env.FRONTEND_URL}/dashboard?token=${token}`);
         } catch (err) {
@@ -75,9 +76,19 @@ router.get('/google/callback', (req, res, next) => {
 }, async (req, res) => {
     try {
         const user = req.user;
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-        logger.info('Google OAuth successful', { userId: user._id });
-        res.redirect(`${process.env.FRONTEND_URL}/dashboard?token=${token}`);
+
+        // Generate JWT token using userId, not just id
+        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+        // Log successful authentication
+        logger.info('Google OAuth successful', {
+            userId: user._id,
+            email: user.email
+        });
+
+        // Redirect to frontend with token
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        res.redirect(`${frontendUrl}/dashboard?token=${token}`);
     } catch (error) {
         logger.error('Google OAuth callback error', { error: error.message });
         res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed`);
