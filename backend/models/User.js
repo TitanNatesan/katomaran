@@ -59,6 +59,5 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
 
 // Create indices for better performance
 userSchema.index({ email: 1 }, { unique: true });
-userSchema.index({ githubId: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('User', userSchema);
